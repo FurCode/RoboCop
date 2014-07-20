@@ -1,16 +1,10 @@
-# CloudBot
+# RoboCop
 
 ## About
 
-CloudBot is a Python IRC bot based on [Skybot](http://git.io/skybot) by [rmmh](http://git.io/rmmh).
+RoboCop is an IRC bot, designed for Python 2.7.x, which is based on Cloudbot (by Luke Rogers), that is in turn based on Skybot.
 
-## Getting and using CloudBot
-
-### Download 
-
-Get CloudBot at [https://github.com/ClouDev/CloudBot/zipball/develop](https://github.com/ClouDev/CloudBot/zipball/develop "Get CloudBot from Github!").
-
-Unzip the resulting file, and continue to read this document.
+## Getting and using RoboCop
 
 ### Install
 
@@ -56,13 +50,13 @@ More at the [Wiki Main Page](http://git.io/cloudbotircwiki).
 
 ### Support
 
-The developers reside in [#CloudBot](irc://irc.esper.net/cloudbot) on [EsperNet](http://esper.net) and would be glad to help you.
+The developers reside in [#techsupport](irc://irc.snoonet.org/techsupport) and would be glad to help you.
 
 If you think you have found a bug/have a idea/suggestion, please **open a issue** here on Github.
 
 ### Requirements
 
-CloudBot runs on **Python** *2.7.x*. It is currently developed on **Windows** *8* with **Python** *2.7.5*.
+CloudBot runs on **Python** *2.7.x*. It is currently developed on **Mac OS X** *10.10* with **Python** *2.7.8*.
 
 It **requires the Python module** lXML.
 The module `Enchant` is needed for the spellcheck plugin.
@@ -70,27 +64,23 @@ The module `PyDNS` is needed for SRV record lookup in the mcping plugin.
 
 **Windows** users: Windows compatibility some plugins is **broken** (such as ping), but we do intend to add it. Eventually.
 
-## Example CloudBots
-
-You can find a number of example bots in [#CloudBot](irc://irc.esper.net/cloudbot "Connect via IRC to #CloudBot on irc.esper.net").
-
 ## License
 
-CloudBot is **licensed** under the **GPL v3** license. The terms are as follows.
+RoboCop is **licensed** under the **GPL v3** license. The terms are as follows.
 
-    CloudBot
+    RoboCop
 
-    Copyright © 2011-2014 Luke Rogers and CloudBot Contributors
+    Copyright © 2014 FurCode Team
 
-    CloudBot is free software: you can redistribute it and/or modify
+    RoboCop is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
     the Free Software Foundation, either version 3 of the License, or
     (at your option) any later version.
 
-    CloudBot is distributed in the hope that it will be useful,
+    RoboCop is distributed in the hope that it will be useful,
     but WITHOUT ANY WARRANTY; without even the implied warranty of
     MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
     GNU General Public License for more details.
 
     You should have received a copy of the GNU General Public License
-    along with CloudBot.  If not, see <http://www.gnu.org/licenses/>.
+    along with RoboCop.  If not, see <http://www.gnu.org/licenses/>.
