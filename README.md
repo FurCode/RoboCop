@@ -70,6 +70,7 @@ RoboCop is **licensed** under the **GPL v3** license. The terms are as follows.
 
     RoboCop
 
+    Copyright © 2011-2014 Luke Rogers and CloudBot Contributors
     Copyright © 2014 FurCode Team
 
     RoboCop is free software: you can redistribute it and/or modify
