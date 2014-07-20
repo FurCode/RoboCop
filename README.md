@@ -2,7 +2,7 @@
 
 ## About
 
-RoboCop is an IRC bot, designed for Python 2.7.x, which is based on Cloudbot (by Luke Rogers), that is in turn based on Skybot.
+RoboCop is an IRC bot, designed for Python 2.7.x, which is based on Cloudbot (by Luke Rogers and the Cloudbot contributors), that is in turn based on Skybot.
 
 ## Getting and using RoboCop
 
