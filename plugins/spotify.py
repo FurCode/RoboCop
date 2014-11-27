@@ -1,14 +1,15 @@
 import re
-from urllib import urlencode
+from urllib.parse import urlencode
 
-from util import hook, http, web
+from cloudbot import hook
+from cloudbot.util import http, web
 
 gateway = 'http://open.spotify.com/{}/{}'  # http spotify gw address
 spuri = 'spotify:{}:{}'
 
-spotify_re = (r'(spotify:(track|album|artist|user):([a-zA-Z0-9]+))', re.I)
-http_re = (r'(open\.spotify\.com\/(track|album|artist|user)\/'
-           '([a-zA-Z0-9]+))', re.I)
+spotify_re = re.compile(r'(spotify:(track|album|artist|user):([a-zA-Z0-9]+))', re.I)
+http_re = re.compile(r'(open\.spotify\.com/(track|album|artist|user)/'
+                     '([a-zA-Z0-9]+))', re.I)
 
 
 def sptfy(inp, sptfy=False):
@@ -24,15 +25,15 @@ def sptfy(inp, sptfy=False):
             link = soup.find('div', {'class': 'resultLink'}).text.strip()
             return link
         except:
-            message = "Unable to shorten URL: %s" % \
-                      soup.find('div', {'class': 'messagebox_text'}).find('p').text.split("<br/>")[0]
+            message = "Unable to shorten URL: {}".format(soup.find('div', {
+                'class': 'messagebox_text'}).find('p').text.split("<br/>")[0])
             return message
     else:
-        return web.try_isgd(inp)
+        return web.try_shorten(inp)
 
 
 @hook.command('sptrack')
-@hook.command
+@hook.command()
 def spotify(inp):
     """spotify <song> -- Search Spotify for <song>"""
     try:
@@ -45,11 +46,12 @@ def spotify(inp):
     except IndexError:
         return "Could not find track."
     url = sptfy(gateway.format(type, id))
-    return u"\x02{}\x02 by \x02{}\x02 - {}".format(data["tracks"][0]["name"],
-                                                           data["tracks"][0]["artists"][0]["name"], url)
+
+    return "\x02{}\x02 by \x02{}\x02 - {}".format(data["tracks"][0]["name"],
+                                                  data["tracks"][0]["artists"][0]["name"], url)
 
 
-@hook.command
+@hook.command()
 def spalbum(inp):
     """spalbum <album> -- Search Spotify for <album>"""
     try:
@@ -62,11 +64,12 @@ def spalbum(inp):
     except IndexError:
         return "Could not find album."
     url = sptfy(gateway.format(type, id))
-    return u"\x02{}\x02 by \x02{}\x02 - {}".format(data["albums"][0]["name"],
-                                                           data["albums"][0]["artists"][0]["name"], url)
+
+    return "\x02{}\x02 by \x02{}\x02 - {}".format(data["albums"][0]["name"],
+                                                  data["albums"][0]["artists"][0]["name"], url)
 
 
-@hook.command
+@hook.command()
 def spartist(inp):
     """spartist <artist> -- Search Spotify for <artist>"""
     try:
@@ -79,11 +82,12 @@ def spartist(inp):
     except IndexError:
         return "Could not find artist."
     url = sptfy(gateway.format(type, id))
-    return u"\x02{}\x02 - {}".format(data["artists"][0]["name"], url)
+
+    return "\x02{}\x02 - {}".format(data["artists"][0]["name"], url)
 
 
-@hook.regex(*http_re)
-@hook.regex(*spotify_re)
+@hook.regex(http_re)
+@hook.regex(spotify_re)
 def spotify_url(match):
     type = match.group(2)
     spotify_id = match.group(3)
@@ -94,13 +98,14 @@ def spotify_url(match):
         name = data["track"]["name"]
         artist = data["track"]["artists"][0]["name"]
         album = data["track"]["album"]["name"]
-        return u"Spotify Track: \x02{}\x02 by \x02{}\x02 from the album \x02{}\x02 - {}".format(name, artist,
-                                                                                                        album, sptfy(
+
+        return "Spotify Track: \x02{}\x02 by \x02{}\x02 from the album \x02{}\x02 - {}".format(name, artist,
+                                                                                               album, sptfy(
                 gateway.format(type, spotify_id)))
     elif type == "artist":
-        return u"Spotify Artist: \x02{}\x02 - {}".format(data["artist"]["name"],
-                                                                 sptfy(gateway.format(type, spotify_id)))
+        return "Spotify Artist: \x02{}\x02 - {}".format(data["artist"]["name"],
+                                                        sptfy(gateway.format(type, spotify_id)))
     elif type == "album":
-        return u"Spotify Album: \x02{}\x02 - \x02{}\x02 - {}".format(data["album"]["artist"],
-                                                                             data["album"]["name"],
-                                                                             sptfy(gateway.format(type, spotify_id)))
+        return "Spotify Album: \x02{}\x02 - \x02{}\x02 - {}".format(data["album"]["artist"],
+                                                                    data["album"]["name"],
+                                                                    sptfy(gateway.format(type, spotify_id)))

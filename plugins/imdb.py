@@ -2,18 +2,18 @@
 
 import re
 
-from util import hook, http, text
-
+from cloudbot import hook
+from cloudbot.util import http, formatting
 
 id_re = re.compile("tt\d+")
-imdb_re = (r'(.*:)//(imdb.com|www.imdb.com)(:[0-9]+)?(.*)', re.I)
+imdb_re = re.compile(r'(.*:)//(imdb.com|www.imdb.com)(:[0-9]+)?(.*)', re.I)
 
 
-@hook.command
-def imdb(inp):
-    """imdb <movie> -- Gets information about <movie> from IMDb."""
+@hook.command()
+def imdb(text):
+    """imdb <movie> - gets information about <movie> from IMDb"""
 
-    strip = inp.strip()
+    strip = text.strip()
 
     if id_re.match(strip):
         content = http.get_json("http://www.omdbapi.com/", i=strip)
@@ -37,7 +37,7 @@ def imdb(inp):
         return 'Unknown error.'
 
 
-@hook.regex(*imdb_re)
+@hook.regex(imdb_re)
 def imdb_url(match):
     imdb_id = match.group(4).split('/')[-1]
     if imdb_id == "":
@@ -47,7 +47,7 @@ def imdb_url(match):
         return 'Movie not found!'
     elif content['Response'] == 'True':
         content['URL'] = 'http://www.imdb.com/title/%(imdbID)s' % content
-        content['Plot'] = text.truncate_str(content['Plot'], 50)
+        content['Plot'] = formatting.truncate_str(content['Plot'], 50)
         out = '\x02%(Title)s\x02 (%(Year)s) (%(Genre)s): %(Plot)s'
         if content['Runtime'] != 'N/A':
             out += ' \x02%(Runtime)s\x02.'

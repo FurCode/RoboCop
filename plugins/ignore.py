@@ -1,39 +1,63 @@
-import json
+import asyncio
 from fnmatch import fnmatch
 
-from util import hook
+from cloudbot import hook
+from cloudbot.event import EventType
 
 
-@hook.sieve
-def ignore_sieve(bot, input, func, type, args):
-    """ blocks input from ignored channels/hosts """
-    ignorelist = bot.config["plugins"]["ignore"]["ignored"]
-    mask = input.mask.lower()
+@hook.onload
+def ensure_ignored(bot):
+    changed = False
+    for conn_config in bot.config["connections"]:
+        if not "plugins" in conn_config:
+            conn_config["plugins"] = {"ignore": {"ignored": []}}
+            changed = True
+        elif not "ignore" in conn_config["plugins"]:
+            conn_config["plugins"]["ignore"] = {"ignored": []}
+            changed = True
+        elif not "ignored" in conn_config["plugins"]["ignore"]:
+            conn_config["plugins"]["ignore"]["ignored"] = []
+            changed = True
 
-    # don't block input to event hooks
-    if type == "event":
-        return input
-
-    if ignorelist:
-        for pattern in ignorelist:
-            if pattern.startswith("#") and pattern in ignorelist:
-                if input.command == "PRIVMSG" and input.lastparam[1:] == "unignore":
-                    return input
-                else:
-                    return None
-            elif fnmatch(mask, pattern):
-                if input.command == "PRIVMSG" and input.lastparam[1:] == "unignore":
-                    return input
-                else:
-                    return None
-
-    return input
+    if changed:
+        bot.config.save_config()
 
 
+@asyncio.coroutine
+@hook.sieve()
+def ignore_sieve(bot, event, _hook):
+    """ blocks events from ignored channels/hosts
+    :type bot: cloudbot.bot.CloudBot
+    :type event: cloudbot.event.Event
+    :type _hook: cloudbot.plugin.Hook
+    """
+    # don't block event hooks
+    if _hook.type == "event":
+        return event
+
+    # don't block an event that could be unignoring
+    if event.type is EventType.message and event.content[1:] == "unignore":
+        return event
+
+    if event.mask is None:
+        # this is a server message, we don't need to check it
+        return event
+
+    ignorelist = event.conn.config["plugins"]["ignore"]["ignored"]
+    mask = event.mask.lower()
+
+    for pattern in ignorelist:
+        if (pattern.startswith("#") and fnmatch(pattern, event.chan)) or fnmatch(mask, pattern):
+            return None
+
+    return event
+
+
+@asyncio.coroutine
 @hook.command(autohelp=False)
-def ignored(inp, notice=None, bot=None):
-    """ignored -- Lists ignored channels/users."""
-    ignorelist = bot.config["plugins"]["ignore"]["ignored"]
+def ignored(notice, conn):
+    """- lists all channels and users I'm ignoring"""
+    ignorelist = conn.config["plugins"]["ignore"]["ignored"]
     if ignorelist:
         notice("Ignored channels/users are: {}".format(", ".join(ignorelist)))
     else:
@@ -42,31 +66,34 @@ def ignored(inp, notice=None, bot=None):
 
 
 @hook.command(permissions=["ignore"])
-def ignore(inp, notice=None, bot=None, config=None):
-    """ignore <channel|nick|host> -- Makes the bot ignore <channel|user>."""
-    target = inp.lower()
-    ignorelist = bot.config["plugins"]["ignore"]["ignored"]
+def ignore(text, bot, conn, notice):
+    """<channel|nick|usermask> - adds <channel|nick> to my ignore list"""
+    target = text.lower()
+    if "!" not in target or "@" not in target:
+        target = "{}!*@*".format(target)
+    ignorelist = conn.config["plugins"]["ignore"]["ignored"]
     if target in ignorelist:
         notice("{} is already ignored.".format(target))
     else:
         notice("{} has been ignored.".format(target))
         ignorelist.append(target)
         ignorelist.sort()
-        json.dump(bot.config, open('config', 'w'), sort_keys=True, indent=2)
+        bot.config.save_config()
     return
 
 
 @hook.command(permissions=["ignore"])
-def unignore(inp, notice=None, bot=None, config=None):
-    """unignore <channel|user> -- Makes the bot listen to
-    <channel|user>."""
-    target = inp.lower()
-    ignorelist = bot.config["plugins"]["ignore"]["ignored"]
+def unignore(text, bot, conn, notice):
+    """<channel|nick|usermask> - removes <channel|nick|usermask> from my ignore list"""
+    target = text.lower()
+    if "!" not in target or "@" not in target:
+        target = "{}!*@*".format(target)
+    ignorelist = conn.config["plugins"]["ignore"]["ignored"]
     if target in ignorelist:
         notice("{} has been unignored.".format(target))
         ignorelist.remove(target)
         ignorelist.sort()
-        json.dump(bot.config, open('config', 'w'), sort_keys=True, indent=2)
+        bot.config.save_config()
     else:
         notice("{} is not ignored.".format(target))
     return

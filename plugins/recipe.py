@@ -1,8 +1,11 @@
 import random
 
-from util import hook, http, web
+import microdata
+import requests
+import bs4
 
-metadata_url = "http://omnidator.appspot.com/microdata/json/?url={}"
+from cloudbot import hook
+from cloudbot.util import web
 
 base_url = "http://www.cookstr.com"
 search_url = base_url + "/searches"
@@ -11,12 +14,20 @@ random_url = search_url + "/surprise"
 # set this to true to censor this plugin!
 censor = True
 phrases = [
-    u"EAT SOME FUCKING \x02{}\x02",
-    u"YOU WON'T NOT MAKE SOME FUCKING \x02{}\x02",
-    u"HOW ABOUT SOME FUCKING \x02{}?\x02",
-    u"WHY DON'T YOU EAT SOME FUCKING \x02{}?\x02",
-    u"MAKE SOME FUCKING \x02{}\x02",
-    u"INDUCE FOOD COMA WITH SOME FUCKING \x02{}\x02"
+    "EAT SOME FUCKING \x02{}\x02",
+    "YOU WON'T NOT MAKE SOME FUCKING \x02{}\x02",
+    "HOW ABOUT SOME FUCKING \x02{}?\x02",
+    "WHY DON'T YOU EAT SOME FUCKING \x02{}?\x02",
+    "MAKE SOME FUCKING \x02{}\x02",
+    "INDUCE FOOD COMA WITH SOME FUCKING \x02{}\x02",
+    "CLASSILY PARTAKE IN SOME FUCKING \x02{}\x02",
+    "COOK UP SOME FUCKING \x02{}\x02",
+    "CURE YOUR MOUTH'S POST TRAUMATIC STRESS DISORDER WITH SOME FUCKING \x02{}\x02",
+    "PROCURE SOME CHILD LABOR TO COOK UP SOME FUCKING \x02{}\x02",
+    "YOUR INDECISION IS FAR LESS APPETIZING THAN SOME FUCKING \x02{}\x02",
+    "PROBABLY FUCK UP SOME FUCKING \x02{}\x02",
+    "LESSEN YOUR MOTHER'S SHAME WITH SOME FUCKING \x02{}\x02",
+    "EAT SHIT, OR IF YOU DON'T LIKE THAT, SOME FUCKING \x02{}\x02"
 ]
 
 clean_key = lambda i: i.split("#")[1]
@@ -27,29 +38,34 @@ class ParseError(Exception):
 
 
 def get_data(url):
-    """ Uses the omnidator API to parse the metadata from the provided URL """
+    """ Uses the metadata module to parse the metadata from the provided URL """
     try:
-        omni = http.get_json(metadata_url.format(url))
-    except (http.HTTPError, http.URLError) as e:
+        request = requests.get(url)
+        request.raise_for_status()
+    except (requests.exceptions.HTTPError, requests.exceptions.ConnectionError) as e:
         raise ParseError(e)
-    schemas = omni["@"]
-    for d in schemas:
-        if d["a"] == "<http://schema.org/Recipe>":
-            data = {clean_key(key): value for (key, value) in d.iteritems()
-                    if key.startswith("http://schema.org/Recipe")}
-            return data
+
+    items = microdata.get_items(request.text)
+
+    for item in items:
+        if item.itemtype == [microdata.URI("http://schema.org/Recipe")]:
+            return item
+
     raise ParseError("No recipe data found")
 
 
 @hook.command(autohelp=False)
-def recipe(inp):
-    """recipe [term] - Gets a recipe for [term], or ets a random recipe if [term] is not provided"""
-    if inp:
+def recipe(text):
+    """[term] - gets a recipe for [term], or gets a random recipe if no term is specified"""
+    if text:
         # get the recipe URL by searching
         try:
-            search = http.get_soup(search_url, query=inp.strip())
-        except (http.HTTPError, http.URLError) as e:
+            request = requests.get(search_url, params={'query': text.strip()})
+            request.raise_for_status()
+        except (requests.exceptions.HTTPError, requests.exceptions.ConnectionError) as e:
             return "Could not get recipe: {}".format(e)
+
+        search = bs4.BeautifulSoup(request.text)
 
         # find the list of results
         result_list = search.find('div', {'class': 'found_results'})
@@ -68,10 +84,12 @@ def recipe(inp):
     else:
         # get a random recipe URL
         try:
-            page = http.open(random_url)
-        except (http.HTTPError, http.URLError) as e:
+            request = requests.get(random_url)
+            request.raise_for_status()
+        except (requests.exceptions.HTTPError, requests.exceptions.ConnectionError) as e:
             return "Could not get recipe: {}".format(e)
-        url = page.geturl()
+
+        url = request.url
 
     # use get_data() to get the recipe info from the URL
     try:
@@ -79,28 +97,31 @@ def recipe(inp):
     except ParseError as e:
         return "Could not parse recipe: {}".format(e)
 
-    name = data["name"].strip()
-    return u"Try eating \x02{}!\x02 - {}".format(name, web.try_isgd(url))
+    name = data.name.strip()
+    return "Try eating \x02{}!\x02 - {}".format(name, web.try_shorten(url))
 
 
-@hook.command(autohelp=False)
-def dinner(inp):
-    """dinner - WTF IS FOR DINNER"""
+# inspired by http://whatthefuckshouldimakefordinner.com/ <3
+@hook.command("dinner", "wtfsimfd", autohelp=False)
+def dinner():
+    """- TELLS YOU WHAT THE F**K YOU SHOULD MAKE FOR DINNER"""
     try:
-        page = http.open(random_url)
-    except (http.HTTPError, http.URLError) as e:
-        return "Could not get recipe: {}".format(e)
-    url = page.geturl()
+        request = requests.get(random_url)
+        request.raise_for_status()
+    except (requests.exceptions.HTTPError, requests.exceptions.ConnectionError) as e:
+        return "I CANT GET A DAMN RECIPE: {}".format(e).upper()
+
+    url = request.url
 
     try:
         data = get_data(url)
     except ParseError as e:
-        return "Could not parse recipe: {}".format(e)
+        return "I CANT READ THE F**KING RECIPE: {}".format(e).upper()
 
-    name = data["name"].strip().upper()
+    name = data.name.strip().upper()
     text = random.choice(phrases).format(name)
 
     if censor:
         text = text.replace("FUCK", "F**K")
 
-    return u"{} - {}".format(text, web.try_isgd(url))
+    return "{} - {}".format(text, web.try_shorten(url))

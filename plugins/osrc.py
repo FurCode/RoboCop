@@ -1,16 +1,14 @@
-from bs4 import BeautifulSoup
-
-from util import hook, http, web
-
+from cloudbot import hook
+from cloudbot.util import http, web
 
 user_url = "http://osrc.dfm.io/{}"
 
 
-@hook.command
-def osrc(inp):
-    """osrc <github user> -- Gets an Open Source Report Card for <github user>"""
+@hook.command()
+def osrc(text):
+    """<github user> - gets an Open Source Report Card for <github user> from osrc.dfm.io"""
 
-    user_nick = inp.strip()
+    user_nick = text.strip()
     url = user_url.format(user_nick)
 
     try:
@@ -24,6 +22,6 @@ def osrc(inp):
     # string to remove the trailing full stop.
     report = " ".join(report.split())[:-1]
 
-    short_url = web.try_isgd(url)
+    short_url = web.try_shorten(url)
 
     return "{} - {}".format(report, short_url)

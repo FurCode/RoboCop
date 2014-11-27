@@ -1,18 +1,18 @@
 import re
+import asyncio
 import random
 
-from util import hook
+from cloudbot import hook
 
 
+@asyncio.coroutine
 @hook.command
-def choose(inp):
-    """choose <choice1>, [choice2], [choice3], [choice4], ... --
-    Randomly picks one of the given choices."""
-
-    c = re.findall(r'([^,]+)', inp)
-    if len(c) == 1:
-        c = re.findall(r'(\S+)', inp)
-        if len(c) == 1:
-            return 'The decision is up to you!'
-
-    return random.choice(c).strip()
+def choose(text, notice):
+    """<choice1>, [choice2], [choice3], etc. - randomly picks one of the given choices
+    :type text: str
+    """
+    choices = re.findall(r'([^,\s]+)', text)
+    if len(choices) == 1:
+        notice(choose.__doc__)
+        return
+    return random.choice(choices)

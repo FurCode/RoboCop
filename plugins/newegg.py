@@ -1,7 +1,8 @@
 import json
 import re
 
-from util import hook, http, text, web
+from cloudbot import hook
+from cloudbot.util import http, formatting, web
 
 
 ## CONSTANTS
@@ -11,14 +12,14 @@ ITEM_URL = "http://www.newegg.com/Product/Product.aspx?Item={}"
 API_PRODUCT = "http://www.ows.newegg.com/Products.egg/{}/ProductDetails"
 API_SEARCH = "http://www.ows.newegg.com/Search.egg/Advanced"
 
-NEWEGG_RE = (r"(?:(?:www.newegg.com|newegg.com)/Product/Product\.aspx\?Item=)([-_a-zA-Z0-9]+)", re.I)
+NEWEGG_RE = re.compile(r"(?:(?:www.newegg.com|newegg.com)/Product/Product\.aspx\?Item=)([-_a-zA-Z0-9]+)", re.I)
 
 
 ## OTHER FUNCTIONS
 
 def format_item(item, show_url=True):
     """ takes a newegg API item object and returns a description """
-    title = text.truncate_str(item["Title"], 50)
+    title = formatting.truncate_str(item["Title"], 50)
 
     # format the rating nicely if it exists
     if not item["ReviewSummary"]["TotalReviews"] == "[]":
@@ -46,44 +47,44 @@ def format_item(item, show_url=True):
         tags.append("\x02Featured\x02")
 
     if item["IsShellShockerItem"]:
-        tags.append(u"\x02SHELL SHOCKER\u00AE\x02")
+        tags.append("\x02SHELL SHOCKER\u00AE\x02")
 
     # join all the tags together in a comma separated string ("tag1, tag2, tag3")
-    tag_text = u", ".join(tags)
+    tag_text = ", ".join(tags)
 
     if show_url:
         # create the item URL and shorten it
-        url = web.try_isgd(ITEM_URL.format(item["NeweggItemNumber"]))
-        return u"\x02{}\x02 ({}) - {} - {} - {}".format(title, price, rating,
-                                                        tag_text, url)
+        url = web.try_shorten(ITEM_URL.format(item["NeweggItemNumber"]))
+        return "\x02{}\x02 ({}) - {} - {} - {}".format(title, price, rating,
+                                                       tag_text, url)
     else:
-        return u"\x02{}\x02 ({}) - {} - {}".format(title, price, rating,
-                                                   tag_text)
+        return "\x02{}\x02 ({}) - {} - {}".format(title, price, rating,
+                                                  tag_text)
 
 
 ## HOOK FUNCTIONS
 
-@hook.regex(*NEWEGG_RE)
+@hook.regex(NEWEGG_RE)
 def newegg_url(match):
     item_id = match.group(1)
     item = http.get_json(API_PRODUCT.format(item_id))
     return format_item(item, show_url=False)
 
 
-@hook.command
-def newegg(inp):
-    """newegg <item name> -- Searches newegg.com for <item name>"""
+@hook.command()
+def newegg(text):
+    """newegg <item name> - searches newegg.com for <item name>"""
 
     # form the search request
     request = {
-        "Keyword": inp,
+        "Keyword": text,
         "Sort": "FEATURED"
     }
 
     # submit the search request
     r = http.get_json(
         'http://www.ows.newegg.com/Search.egg/Advanced',
-        post_data=json.dumps(request)
+        post_data=json.dumps(request).encode('utf-8')
     )
 
     # get the first result
@@ -91,5 +92,3 @@ def newegg(inp):
         return format_item(r["ProductListItems"][0])
     else:
         return "No results found."
-
-

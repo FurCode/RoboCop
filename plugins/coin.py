@@ -1,24 +1,29 @@
+import asyncio
 import random
 
-from util import hook
+from cloudbot import hook
 
 
+@asyncio.coroutine
 @hook.command(autohelp=False)
-def coin(inp, action=None):
-    """coin [amount] -- Flips [amount] of coins."""
+def coin(text, notice, action):
+    """[amount] - flips [amount] coins
+    :type text: str
+    """
 
-    if inp:
+    if text:
         try:
-            amount = int(inp)
+            amount = int(text)
         except (ValueError, TypeError):
-            return "Invalid input!"
+            notice("Invalid input '{}': not a number".format(text))
+            return
     else:
         amount = 1
 
     if amount == 1:
         action("flips a coin and gets {}.".format(random.choice(["heads", "tails"])))
     elif amount == 0:
-        action("makes a coin flipping motion with its hands.")
+        action("makes a coin flipping motion")
     else:
         heads = int(random.normalvariate(.5 * amount, (.75 * amount) ** .5))
         tails = amount - heads

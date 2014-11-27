@@ -1,10 +1,9 @@
 import datetime
 
-from util import hook, http
-
+from cloudbot import hook
+from cloudbot.util import http
 
 base_url = "http://thetvdb.com/api/"
-api_key = "469B73127CA0C411"
 
 
 def get_episodes_for_series(series_name, api_key):
@@ -44,7 +43,7 @@ def get_episode_info(episode, api_key):
     first_aired = episode.findtext("FirstAired")
 
     try:
-        air_date = datetime.date(*map(int, first_aired.split('-')))
+        air_date = datetime.date(*list(map(int, first_aired.split('-'))))
     except (ValueError, TypeError):
         return None
 
@@ -63,7 +62,7 @@ def get_episode_info(episode, api_key):
     return first_aired, air_date, episode_desc
 
 
-@hook.command
+@hook.command()
 @hook.command('tv')
 def tv_next(inp, bot=None):
     """tv <series> -- Get the next episode of <series>."""
@@ -113,7 +112,7 @@ def tv_next(inp, bot=None):
         return "The next episodes of {}: {}".format(series_name, next_eps)
 
 
-@hook.command
+@hook.command()
 @hook.command('tv_prev')
 def tv_last(inp, bot=None):
     """tv_last <series> -- Gets the most recently aired episode of <series>."""
@@ -142,7 +141,7 @@ def tv_last(inp, bot=None):
         (first_aired, air_date, episode_desc) = ep_info
 
         if air_date < today:
-            #iterating in reverse order, so the first episode encountered
+            # iterating in reverse order, so the first episode encountered
             #before today was the most recently aired
             prev_ep = '{} ({})'.format(first_aired, episode_desc)
             break

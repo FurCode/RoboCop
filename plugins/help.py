@@ -1,51 +1,83 @@
+from operator import attrgetter
+import asyncio
 import re
 
-from util import hook
+from cloudbot import hook
 
 
+@asyncio.coroutine
 @hook.command("help", autohelp=False)
-def help_command(inp, notice=None, conn=None, bot=None):
-    """help  -- Gives a list of commands/help for a command."""
-
-    funcs = {}
-    disabled = bot.config.get('disabled_plugins', [])
-    disabled_comm = bot.config.get('disabled_commands', [])
-    for command, (func, args) in bot.commands.iteritems():
-        fn = re.match(r'^plugins.(.+).py$', func._filename)
-        if fn.group(1).lower() not in disabled:
-            if command not in disabled_comm:
-                if func.__doc__ is not None:
-                    if func in funcs:
-                        if len(funcs[func]) < len(command):
-                            funcs[func] = command
-                    else:
-                        funcs[func] = command
-
-    commands = dict((value, key) for key, value in funcs.iteritems())
-
-    if not inp:
-        out = [""]
-        well = []
-        for x in commands:
-            well.append(x)
-        well.sort()
-        count = 0
-        for x in well:
-            if len(out[count]) + len(str(x)) > 405:
-                count += 1
-                out.append(str(x))
-            else:
-                out[count] += " " + str(x)
-
-        notice("Commands I recognise: " + out[0][1:])
-        if len(out) > 1:
-            for x in out[1:]:
-                notice(x)
-        notice("For detailed help, do '%shelp <example>' where <example> "
-               "is the name of the command you want help for." % conn.conf["command_prefix"])
-
+def help_command(text, conn, bot, notice, has_permission):
+    """[command] - gives help for [command], or lists all available commands if no command is specified
+    :type text: str
+    :type conn: cloudbot.client.Client
+    :type bot: cloudbot.bot.CloudBot
+    """
+    if text:
+        searching_for = text.lower().strip()
+        if not re.match(r'^\w+$', searching_for):
+            notice("Invalid command name '{}'".format(text))
+            return
     else:
-        if inp in commands:
-            notice(conn.conf["command_prefix"] + commands[inp].__doc__)
+        searching_for = None
+
+    if searching_for:
+        if searching_for in bot.plugin_manager.commands:
+            doc = bot.plugin_manager.commands[searching_for].doc
+            if doc:
+                if doc.split()[0].isalpha():
+                    # this is using the old format of `name <args> - doc`
+                    message = "{}{}".format(conn.config["command_prefix"], doc)
+                else:
+                    # this is using the new format of `<args> - doc`
+                    message = "{}{} {}".format(conn.config["command_prefix"], searching_for, doc)
+                notice(message)
+            else:
+                notice("Command {} has no additional documentation.".format(searching_for))
         else:
-            notice("Command {}{} not found".format(conn.conf["command_prefix"], inp))
+            notice("Unknown command '{}'".format(searching_for))
+    else:
+
+        # list of lines to send to the user
+        lines = []
+        # current line, containing words to join with " "
+        current_line = []
+        # current line length, to count how long the current line will be when joined with " "
+        current_line_length = 0
+
+        for plugin in sorted(set(bot.plugin_manager.commands.values()), key=attrgetter("name")):
+            # use set to remove duplicate commands (from multiple aliases), and sorted to sort by name
+
+            if plugin.permissions:
+                # check permissions
+                allowed = False
+                for perm in plugin.permissions:
+                    if has_permission(perm, notice=False):
+                        allowed = True
+                        break
+
+                if not allowed:
+                    # skip adding this command
+                    continue
+
+            # add the command to lines sent
+            command = plugin.name
+            added_length = len(command) + 2  # + 2 to account for space and comma
+
+            if current_line_length + added_length > 450:
+                # if line limit is reached, add line to lines, and reset
+                lines.append(", ".join(current_line) + ",")
+                current_line = []
+                current_line_length = 0
+
+            current_line.append(command)
+            current_line_length += added_length
+
+        if current_line:
+            # make sure to include the last line
+            lines.append(", ".join(current_line))
+
+        notice("Here's a list of commands you can use:")
+        for line in lines:
+            notice(line)
+        notice("For detailed help, use {}help <command>, without the brackets.".format(conn.config["command_prefix"]))

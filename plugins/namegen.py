@@ -1,10 +1,8 @@
 import json
 import os
 
-from util import hook, text, textgen
-
-
-GEN_DIR = "./plugins/data/name_files/"
+from cloudbot import hook
+from cloudbot.util import formatting, textgen
 
 
 def get_generator(_json):
@@ -14,25 +12,23 @@ def get_generator(_json):
 
 
 @hook.command(autohelp=False)
-def namegen(inp, notice=None):
-    """namegen [generator] -- Generates some names using the chosen generator.
-    'namegen list' will display a list of all generators."""
+def namegen(text, bot, notice):
+    """[generator|list] - generates some names using the chosen generator, or lists all generators if 'list' is specified
+    :type bot: cloudbot.bot.CloudBot
+    """
 
     # clean up the input
-    inp = inp.strip().lower()
+    inp = text.strip().lower()
 
     # get a list of available name generators
-    files = os.listdir(GEN_DIR)
-    all_modules = []
-    for i in files:
-        if os.path.splitext(i)[1] == ".json":
-            all_modules.append(os.path.splitext(i)[0])
+    files = os.listdir(os.path.join(bot.data_dir, "name_files"))
+    all_modules = [os.path.splitext(i)[0] for i in files if os.path.splitext(i)[1] == ".json"]
     all_modules.sort()
 
     # command to return a list of all available generators
     if inp == "list":
         message = "Available generators: "
-        message += text.get_text_list(all_modules, 'and')
+        message += formatting.get_text_list(all_modules, 'and')
         notice(message)
         return
 
@@ -44,10 +40,10 @@ def namegen(inp, notice=None):
 
     # check if the selected module is valid
     if not selected_module in all_modules:
-        return "Invalid name generator :("
+        return "{} is not a valid name generator.".format(inp)
 
     # load the name generator
-    with open(os.path.join(GEN_DIR, "{}.json".format(selected_module))) as f:
+    with open(os.path.join(bot.data_dir, "name_files", "{}.json".format(selected_module))) as f:
         try:
             generator = get_generator(f.read())
         except ValueError as error:
@@ -57,4 +53,4 @@ def namegen(inp, notice=None):
     name_list = generator.generate_strings(10)
 
     # and finally return the final message :D
-    return "Some names to ponder: {}.".format(text.get_text_list(name_list, 'and'))
+    return "Some names to ponder: {}.".format(formatting.get_text_list(name_list, 'and'))

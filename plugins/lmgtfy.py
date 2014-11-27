@@ -1,14 +1,11 @@
-from util import hook, web, http
+from cloudbot import hook
+from cloudbot.util import web, http
 
 
-@hook.command('gfy')
-@hook.command
-def lmgtfy(inp):
-    """lmgtfy [phrase] - Posts a google link for the specified phrase"""
+@hook.command("lmgtfy", "gfy")
+def lmgtfy(text):
+    """[phrase] - gets a lmgtfy.com link for the specified phrase"""
 
-    link = u"http://lmgtfy.com/?q={}".format(http.quote_plus(inp))
+    link = "http://lmgtfy.com/?q={}".format(http.quote_plus(text))
 
-    try:
-        return web.isgd(link)
-    except (web.ShortenError, http.HTTPError):
-        return link
+    return web.try_shorten(link)

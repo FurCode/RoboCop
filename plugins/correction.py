@@ -1,37 +1,38 @@
-from util import hook
-
+import asyncio
 import re
 
-CORRECTION_RE = r'^(s|S)/.*/.*/?\S*$'
+from cloudbot import hook
+
+correction_re = re.compile(r"^[sS]/(.*/.*/[igx]{,4})\S*$")
 
 
-@hook.regex(CORRECTION_RE)
-def correction(match, input=None, conn=None, message=None):
-    split = input.msg.split("/")
+@asyncio.coroutine
+@hook.regex(correction_re)
+def correction(match, conn, chan, message):
+    """
+    :type match: re.__Match
+    :type conn: cloudbot.client.Client
+    :type chan: str
+    """
+    find, replacement, flags = tuple([b.replace("\/", "/") for b in re.split(r"(?<!\\)/", match.groups()[0])])
 
-    if len(split) == 4:
-        nick = split[3].lower()
-    else:
-        nick = None
+    find_re = re.compile("{}{}".format("(?{})".format(flags.replace("g", "")) if flags.replace("g", "") != "" else "", find))
 
-    find = split[1]
-    replace = split[2]
-
-    for item in conn.history[input.chan].__reversed__():
-        name, timestamp, msg = item
-        if msg.startswith("s/"):
+    for item in conn.history[chan].__reversed__():
+        nick, timestamp, msg = item
+        if correction_re.match(msg):
             # don't correct corrections, it gets really confusing
             continue
-        if nick:
-            if nick != name.lower():
-                continue
-        if find in msg:
+        if find_re.search(msg):
             if "\x01ACTION" in msg:
-                msg = msg.replace("\x01ACTION ", "/me ").replace("\x01", "")
-            message(u"Correction, <{}> {}".format(name, msg.replace(find, "\x02" + replace + "\x02")))
+                mod_msg = msg.replace("\x01ACTION ", "/me ").replace("\x01", "")
+            mod_msg = find_re.sub("\x02" + replacement + "\x02", msg, count=int(not "g" in flags))
+            message("Correction, <{}> {}".format(nick, mod_msg))
+            # append to end of history file
+            msg = find_re.sub(replacement, msg, count=int(not "g" in flags))
+            conn.history[chan].append((nick, timestamp, msg))
             return
         else:
             continue
-
-    return u"Did not find {} in any recent messages.".format(find)
+    return "Did not find {} in any recent messages.".format(to_find)
 

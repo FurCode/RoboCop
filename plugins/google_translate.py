@@ -3,11 +3,11 @@ A Google API key is required and retrieved from the bot config file.
 Since December 1, 2011, the Google Translate API is a paid service only.
 """
 
-import htmlentitydefs
 import re
+import html.entities
 
-from util import hook, http
-
+from cloudbot import hook
+from cloudbot.util import http
 
 max_length = 100
 
@@ -17,25 +17,26 @@ max_length = 100
 
 def unescape(text):
     def fixup(m):
-        text = m.group(0)
-        if text[:2] == "&#":
+        _text = m.group(0)
+        if _text[:2] == "&#":
             # character reference
             try:
-                if text[:3] == "&#x":
-                    return unichr(int(text[3:-1], 16))
+                if _text[:3] == "&#x":
+                    return chr(int(_text[3:-1], 16))
                 else:
-                    return unichr(int(text[2:-1]))
+                    return chr(int(_text[2:-1]))
             except ValueError:
                 pass
         else:
             # named entity
             try:
-                text = unichr(htmlentitydefs.name2codepoint[text[1:-1]])
+                _text = chr(html.entities.name2codepoint[_text[1:-1]])
             except KeyError:
                 pass
-        return text  # leave as is
+        return _text  # leave as is
 
     return re.sub("&#?\w+;", fixup, text)
+
 
 ##############################################################################
 
@@ -73,23 +74,22 @@ def match_language(fragment):
     return None
 
 
-@hook.command
-def translate(inp, bot=None):
-    """translate [source language [target language]] <sentence> -- translates
-    <sentence> from source language (default autodetect) to target
-    language (default English) using Google Translate"""
+@hook.command()
+def translate(text, bot):
+    """[source language [target language]] <sentence> - translates <sentence> from source language (default autodetect)
+     to target language (default English) using Google Translate"""
 
     api_key = bot.config.get("api_keys", {}).get("googletranslate", None)
     if not api_key:
         return "This command requires a paid API key."
 
-    args = inp.split(u' ', 2)
+    args = text.split(' ', 2)
 
     try:
         if len(args) >= 2:
             sl = match_language(args[0])
             if not sl:
-                return goog_trans(api_key, inp, '', 'en')
+                return goog_trans(api_key, text, '', 'en')
             if len(args) == 2:
                 return goog_trans(api_key, args[1], sl, 'en')
             if len(args) >= 3:
@@ -99,8 +99,8 @@ def translate(inp, bot=None):
                         return 'unable to determine desired target language'
                     return goog_trans(api_key, args[1] + ' ' + args[2], sl, 'en')
                 return goog_trans(api_key, args[2], sl, tl)
-        return goog_trans(api_key, inp, '', 'en')
-    except IOError, e:
+        return goog_trans(api_key, text, '', 'en')
+    except IOError as e:
         return e
 
 

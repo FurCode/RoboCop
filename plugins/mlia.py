@@ -2,8 +2,8 @@
 
 import random
 
-from util import hook, http
-
+from cloudbot import hook
+from cloudbot.util import http
 
 mlia_cache = []
 
@@ -23,8 +23,8 @@ refresh_cache()
 
 
 @hook.command(autohelp=False)
-def mlia(inp, reply=None):
-    """mlia -- Gets a random quote from MyLifeIsAverage.com."""
+def mlia(reply):
+    """- gets a random quote from MyLifeIsAverage.com"""
     # grab the last item in the mlia cache and remove it
     mlia_id, text = mlia_cache.pop()
     # reply with the mlia we grabbed

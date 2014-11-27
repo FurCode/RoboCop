@@ -4,18 +4,18 @@ Runs a given url through the w3c validator
 by Vladi
 """
 
-from util import hook, http
+from cloudbot import hook
+from cloudbot.util import http
 
 
-@hook.command('w3c')
-@hook.command
-def validate(inp):
+@hook.command("validate", "w3c")
+def validate(text):
     """validate <url> -- Runs url through the w3c markup validator."""
 
-    if not inp.startswith('http://'):
-        inp = 'http://' + inp
+    if not text.startswith('http://'):
+        text = 'http://' + text
 
-    url = 'http://validator.w3.org/check?uri=' + http.quote_plus(inp)
+    url = 'http://validator.w3.org/check?uri=' + http.quote_plus(text)
     info = dict(http.open(url).info())
 
     status = info['x-w3c-validator-status'].lower()
@@ -23,4 +23,4 @@ def validate(inp):
         error_count = info['x-w3c-validator-errors']
         warning_count = info['x-w3c-validator-warnings']
         return "{} was found to be {} with {} errors and {} warnings." \
-               " see: {}".format(inp, status, error_count, warning_count, url)
+               " see: {}".format(text, status, error_count, warning_count, url)

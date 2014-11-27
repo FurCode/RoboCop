@@ -1,60 +1,85 @@
-import re
-from fnmatch import fnmatch
+import asyncio
 
-from util import hook
+from cloudbot import hook
+from cloudbot.util.tokenbucket import TokenBucket
+
+TOKENS = 17.5
+RESTORE_RATE = 2.5
+MESSAGE_COST = 5
+
+# when STRICT is enabled, every time a user gets ratelimted it wipes
+# their tokens so they have to wait at least X seconds to regen
+STRICT = True
+
+buckets = {}
 
 
+@asyncio.coroutine
 @hook.sieve
-def sieve_suite(bot, input, func, kind, args):
-    if input.command == 'PRIVMSG' and \
-            input.nick.endswith('bot') and args.get('ignorebots', True):
+def sieve_suite(bot, event, _hook):
+    """
+    :type bot: cloudbot.bot.CloudBot
+    :type event: cloudbot.event.Event
+    :type _hook: cloudbot.plugin.Hook
+    """
+    conn = event.conn
+    # check ignore bots
+    if event.irc_command == 'PRIVMSG' and event.nick.endswith('bot') and _hook.ignore_bots:
         return None
 
-    if kind == "command":
-        if input.trigger in bot.config.get('disabled_commands', []):
-            return None
-
-    fn = re.match(r'^plugins.(.+).py$', func._filename)
-    disabled = bot.config.get('disabled_plugins', [])
-    if fn and fn.group(1).lower() in disabled:
-        return None
-
-    acl = bot.config.get('acls', {}).get(func.__name__)
+    # check acls
+    acl = conn.config.get('acls', {}).get(_hook.function_name)
     if acl:
         if 'deny-except' in acl:
-            allowed_channels = map(unicode.lower, acl['deny-except'])
-            if input.chan.lower() not in allowed_channels:
+            allowed_channels = list(map(str.lower, acl['deny-except']))
+            if event.chan.lower() not in allowed_channels:
                 return None
         if 'allow-except' in acl:
-            denied_channels = map(unicode.lower, acl['allow-except'])
-            if input.chan.lower() in denied_channels:
+            denied_channels = list(map(str.lower, acl['allow-except']))
+            if event.chan.lower() in denied_channels:
                 return None
 
-    # shim so plugins using the old "adminonly" permissions format still work
-    if args.get('adminonly', False):
-        args["permissions"] = ["adminonly"]
+    # check disabled_commands
+    if _hook.type == "command":
+        disabled_commands = conn.config.get('disabled_commands', [])
+        if event.triggered_command in disabled_commands:
+            return None
 
-    if args.get('permissions', False):
-        groups = bot.config.get("permissions", [])
+    # check permissions
+    allowed_permissions = _hook.permissions
+    if allowed_permissions:
+        allowed = False
+        for perm in allowed_permissions:
+            if event.has_permission(perm):
+                allowed = True
+                break
 
-        allowed_permissions = args.get('permissions', [])
+        if not allowed:
+            event.notice("Sorry, you are not allowed to use this command.")
+            return None
 
-        mask = input.mask.lower()
+    # check command spam tokens
+    if _hook.type == "command":
+        # right now ratelimiting is per-channel, but this can be changed
+        uid = event.chan
 
-        # loop over every group
-        for key, group in groups.iteritems():
-            # loop over every permission the command allows
-            for permission in allowed_permissions:
-                # see if the group has that permission
-                if permission in group["perms"]:
-                    # if so, check it
-                    group_users = [_mask.lower() for _mask in group["users"]]
-                    for pattern in group_users:
-                        if fnmatch(mask, pattern):
-                            print "Allowed group {}.".format(group)
-                            return input
+        if uid not in buckets:
+            bucket = TokenBucket(TOKENS, RESTORE_RATE)
+            bucket.consume(MESSAGE_COST)
+            buckets[uid] = bucket
+            return event
 
-        input.notice("Sorry, you are not allowed to use this command.")
-        return None
+        bucket = buckets[uid]
+        if bucket.consume(MESSAGE_COST):
+            pass
+        else:
+            if STRICT:
+                # bad person loses all tokens
+                bucket.empty()
+            bot.logger.info("[{}] Refused command from {}. Entity has {} tokens, needs {}.".format(conn.readable_name,
+                                                                                                   uid,
+                                                                                                   bucket.tokens,
+                                                                                                   MESSAGE_COST))
+            return None
 
-    return input
+    return event

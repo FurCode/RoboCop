@@ -2,21 +2,23 @@
 http://brainfuck.sourceforge.net/brain.py"""
 
 import re
+import asyncio
 import random
 
-from util import hook
-
+from cloudbot import hook
 
 BUFFER_SIZE = 5000
 MAX_STEPS = 1000000
 
 
-@hook.command('brainfuck')
-@hook.command
-def bf(inp):
-    """bf <prog> -- Executes <prog> as Brainfuck code."""
+@asyncio.coroutine
+@hook.command("brainfuck", "bf")
+def bf(text):
+    """<prog> - executes <prog> as Brainfuck code
+    :type text: str
+    """
 
-    program = re.sub('[^][<>+-.,]', '', inp)
+    program = re.sub('[^][<>+-.,]', '', text)
 
     # create a dict of brackets pairs, for speed later on
     brackets = {}
@@ -30,17 +32,17 @@ def bf(inp):
                 brackets[open_brackets[-1]] = pos
                 open_brackets.pop()
             else:
-                return 'unbalanced brackets'
+                return "Unbalanced brackets"
     if len(open_brackets) != 0:
-        return 'unbalanced brackets'
+        return "Unbalanced brackets"
 
     # now we can start interpreting
-    ip = 0        # instruction pointer
-    mp = 0        # memory pointer
+    ip = 0  # instruction pointer
+    mp = 0  # memory pointer
     steps = 0
     memory = [0] * BUFFER_SIZE  # initial memory area
     rightmost = 0
-    output = ""   # we'll save the output here
+    output = ""  # we'll save the output here
 
     # the main program loop:
     while ip < len(program):
@@ -74,16 +76,16 @@ def bf(inp):
         ip += 1
         steps += 1
         if steps > MAX_STEPS:
-            if output == '':
-                output = '(no output)'
-            output += '[exceeded {} iterations]'.format(MAX_STEPS)
+            if not output:
+                output = "(no output)"
+            output += "(exceeded {} iterations)".format(MAX_STEPS)
             break
 
     stripped_output = re.sub(r'[\x00-\x1F]', '', output)
 
-    if stripped_output == '':
-        if output != '':
-            return 'no printable output'
-        return 'no output'
+    if not stripped_output:
+        if output:
+            return "No printable output"
+        return "No output"
 
-    return stripped_output[:430].decode('utf8', 'ignore')
+    return stripped_output[:430]

@@ -1,9 +1,10 @@
 persist
-config
+config.json
 gitflow
 *.db
 *.log
 .*.swp
+__pycache__
 *.pyc
 *.orig
 .project
@@ -11,4 +12,9 @@ gitflow
 *.sublime-project
 *.sublime-workspace
 .idea/
-plugins/data/GeoLiteCity.dat
+data/GeoLiteCity.dat
+plugins/New Text Document.txt
+plugins/srvv.py
+run.cmd
+config
+.vagrant

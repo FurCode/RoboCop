@@ -1,32 +1,30 @@
 from datetime import datetime
 
-from util import hook, http, timesince
-
+from cloudbot import hook
+from cloudbot.util import http, timesince
 
 api_url = "http://ws.audioscrobbler.com/2.0/?format=json"
 
 
-@hook.command('l', autohelp=False)
-@hook.command(autohelp=False)
-def lastfm(inp, nick='', db=None, bot=None, notice=None):
-    """lastfm [user] [dontsave] -- Displays the now playing (or last played)
-     track of LastFM user [user]."""
+@hook.command("lastfm", "l", autohelp=False)
+def lastfm(text, nick, db, bot, notice):
+    """[user] [dontsave] - displays the now playing (or last played) track of LastFM user [user]"""
     api_key = bot.config.get("api_keys", {}).get("lastfm")
     if not api_key:
         return "error: no api key set"
 
     # check if the user asked us not to save his details
-    dontsave = inp.endswith(" dontsave")
+    dontsave = text.endswith(" dontsave")
     if dontsave:
-        user = inp[:-9].strip().lower()
+        user = text[:-9].strip().lower()
     else:
-        user = inp
+        user = text
 
     db.execute("create table if not exists lastfm(nick primary key, acc)")
 
     if not user:
-        user = db.execute("select acc from lastfm where nick=lower(?)",
-                          (nick,)).fetchone()
+        user = db.execute("select acc from lastfm where nick=lower(:nick)",
+                          {'nick': nick}).fetchone()
         if not user:
             notice(lastfm.__doc__)
             return
@@ -36,10 +34,10 @@ def lastfm(inp, nick='', db=None, bot=None, notice=None):
                              api_key=api_key, user=user, limit=1)
 
     if 'error' in response:
-        return u"Error: {}.".format(response["message"])
+        return "Error: {}.".format(response["message"])
 
-    if not "track" in response["recenttracks"] or len(response["recenttracks"]["track"]) == 0:
-        return u'No recent tracks for user "{}" found.'.format(user)
+    if "track" not in response["recenttracks"] or len(response["recenttracks"]["track"]) == 0:
+        return 'No recent tracks for user "{}" found.'.format(user)
 
     tracks = response["recenttracks"]["track"]
 
@@ -66,18 +64,18 @@ def lastfm(inp, nick='', db=None, bot=None, notice=None):
     album = track["album"]["#text"]
     artist = track["artist"]["#text"]
 
-    out = u'{} {} "{}"'.format(user, status, title)
+    out = '{} {} "{}"'.format(user, status, title)
     if artist:
-        out += u" by \x02{}\x0f".format(artist)
+        out += " by \x02{}\x0f".format(artist)
     if album:
-        out += u" from the album \x02{}\x0f".format(album)
+        out += " from the album \x02{}\x0f".format(album)
 
     # append ending based on what type it was
     out += ending
 
-    if inp and not dontsave:
-        db.execute("insert or replace into lastfm(nick, acc) values (?,?)",
-                   (nick.lower(), user))
+    if text and not dontsave:
+        db.execute("insert or replace into lastfm(nick, acc) values (:nick, :account)",
+                   {'nick': nick.lower(), 'account': user})
         db.commit()
 
     return out

@@ -3,8 +3,8 @@ Scaevolus 2009"""
 
 import re
 
-from util import hook, http, text
-
+from cloudbot import hook
+from cloudbot.util import http, formatting
 
 api_prefix = "http://en.wikipedia.org/w/api.php"
 search_url = api_prefix + "?action=opensearch&format=xml"
@@ -12,12 +12,11 @@ search_url = api_prefix + "?action=opensearch&format=xml"
 paren_re = re.compile('\s*\(.*\)$')
 
 
-@hook.command('w')
-@hook.command
-def wiki(inp):
+@hook.command("wiki", "wikipedia", "w")
+def wiki(text):
     """wiki <phrase> -- Gets first sentence of Wikipedia article on <phrase>."""
 
-    x = http.get_xml(search_url, search=inp)
+    x = http.get_xml(search_url, search=text)
 
     ns = '{http://opensearch.org/searchsuggest2}'
     items = x.findall(ns + 'Section/' + ns + 'Item')
@@ -29,7 +28,7 @@ def wiki(inp):
             return 'No results found.'
 
     def extract(item):
-        return [item.find(ns + x).text for x in
+        return [item.find(ns + i).text for i in
                 ('Text', 'Description', 'Url')]
 
     title, desc, url = extract(items[0])
@@ -42,8 +41,8 @@ def wiki(inp):
     if title.lower() not in desc.lower():
         desc = title + desc
 
-    desc = u' '.join(desc.split())  # remove excess spaces
+    desc = ' '.join(desc.split())  # remove excess spaces
 
-    desc = text.truncate_str(desc, 200)
+    desc = formatting.truncate_str(desc, 200)
 
-    return u'{} :: {}'.format(desc, http.quote(url, ':/'))
+    return '{} :: {}'.format(desc, http.quote(url, ':/'))

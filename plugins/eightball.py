@@ -1,7 +1,9 @@
+import os
+import asyncio
 import random
 
-from util import hook, text
-
+from cloudbot import hook
+from cloudbot.util import formatting
 
 color_codes = {
     "<r>": "\x02\x0305",
@@ -9,15 +11,20 @@ color_codes = {
     "<y>": "\x02"
 }
 
-with open("plugins/data/8ball_responses.txt") as f:
-    responses = [line.strip() for line in
-                 f.readlines() if not line.startswith("//")]
+
+@hook.onload()
+def load_responses(bot):
+    path = os.path.join(bot.data_dir, "8ball_responses.txt")
+    global responses
+    with open(path) as f:
+        responses = [line.strip() for line in
+                     f.readlines() if not line.startswith("//")]
 
 
-@hook.command('8ball')
-def eightball(inp, action=None):
-    """8ball <question> -- The all knowing magic eight ball,
-    in electronic form. Ask and it shall be answered!"""
+@asyncio.coroutine
+@hook.command("8ball", "8", "eightball")
+def eightball(action):
+    """<question> - asks the all knowing magic electronic eight ball <question>"""
 
-    magic = text.multiword_replace(random.choice(responses), color_codes)
+    magic = formatting.multiword_replace(random.choice(responses), color_codes)
     action("shakes the magic 8 ball... {}".format(magic))

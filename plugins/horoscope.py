@@ -1,36 +1,31 @@
 # Plugin by Infinity - <https://github.com/infinitylabs/UguuBot>
 
-from util import hook, http, text
+from cloudbot import hook
+from cloudbot.util import http, formatting
 
-db_ready = False
 
-
-def db_init(db):
-    """check to see that our db has the horoscope table and return a connection."""
-    global db_ready
-    if not db_ready:
-        db.execute("create table if not exists horoscope(nick primary key, sign)")
-        db.commit()
-        db_ready = True
+@hook.onload()
+def init(db):
+    db.execute("create table if not exists horoscope(nick primary key, sign)")
+    db.commit()
 
 
 @hook.command(autohelp=False)
-def horoscope(inp, db=None, notice=None, nick=None):
-    """horoscope <sign> -- Get your horoscope."""
-    db_init(db)
+def horoscope(text, db, notice, nick):
+    """<sign> - get your horoscope"""
 
     # check if the user asked us not to save his details
-    dontsave = inp.endswith(" dontsave")
+    dontsave = text.endswith(" dontsave")
     if dontsave:
-        sign = inp[:-9].strip().lower()
+        sign = text[:-9].strip().lower()
     else:
-        sign = inp
+        sign = text
 
     db.execute("create table if not exists horoscope(nick primary key, sign)")
 
     if not sign:
-        sign = db.execute("select sign from horoscope where nick=lower(?)",
-                          (nick,)).fetchone()
+        sign = db.execute("select sign from horoscope where "
+                          "nick=lower(:nick)", {'nick': nick}).fetchone()
         if not sign:
             notice("horoscope <sign> -- Get your horoscope")
             return
@@ -41,16 +36,16 @@ def horoscope(inp, db=None, notice=None, nick=None):
 
     title = soup.find_all('h1', {'class': 'h1b'})[1]
     horoscope_text = soup.find('div', {'class': 'fontdef1'})
-    result = u"\x02%s\x02 %s" % (title, horoscope_text)
-    result = text.strip_html(result)
-    #result = unicode(result, "utf8").replace('flight ','')
+    result = "\x02{}\x02 {}".format(title, horoscope_text)
+    result = formatting.strip_html(result)
+    # result = unicode(result, "utf8").replace('flight ','')
 
     if not title:
-        return "Could not get the horoscope for {}.".format(inp)
+        return "Could not get the horoscope for {}.".format(text)
 
-    if inp and not dontsave:
-        db.execute("insert or replace into horoscope(nick, sign) values (?,?)",
-                    (nick.lower(), sign))
+    if text and not dontsave:
+        db.execute("insert or replace into horoscope(nick, sign) values (:nick, :sign)",
+                   {'nick': nick.lower(), 'sign': sign})
         db.commit()
 
     return result

@@ -2,7 +2,7 @@ import random
 import re
 import time
 
-from util import hook
+from cloudbot import hook
 
 
 def format_quote(q, num, n_quotes):
@@ -121,15 +121,14 @@ def get_quote_by_chan(db, chan, num=False):
 
 
 @hook.command('q')
-@hook.command
-def quote(inp, nick='', chan='', db=None, notice=None):
-    """quote [#chan] [nick] [#n]/.quote add <nick> <msg>
-    Gets random or [#n]th quote by <nick> or from <#chan>/adds quote."""
+@hook.command()
+def quote(text, nick='', chan='', db=None, notice=None):
+    """[#chan] [nick] [#n] OR add <nick> <message> - gets the [#n]th quote by <nick> (defaulting to random) OR adds <message> as a quote for <nick> in the caller's channel"""
     create_table_if_not_exists(db)
 
-    add = re.match(r"add[^\w@]+(\S+?)>?\s+(.*)", inp, re.I)
-    retrieve = re.match(r"(\S+)(?:\s+#?(-?\d+))?$", inp)
-    retrieve_chan = re.match(r"(#\S+)\s+(\S+)(?:\s+#?(-?\d+))?$", inp)
+    add = re.match(r"add[^\w@]+(\S+?)>?\s+(.*)", text, re.I)
+    retrieve = re.match(r"(\S+)(?:\s+#?(-?\d+))?$", text)
+    retrieve_chan = re.match(r"(#\S+)\s+(\S+)(?:\s+#?(-?\d+))?$", text)
 
     if add:
         quoted_nick, msg = add.groups()

@@ -1,55 +1,64 @@
 # Written by Scaevolus, updated by Lukeroge
 
+
 import re
+import asyncio
 import random
 
-from util import hook
-
+from cloudbot import hook
 
 whitespace_re = re.compile(r'\s+')
-valid_diceroll = r'^([+-]?(?:\d+|\d*d(?:\d+|F))(?:[+-](?:\d+|\d*d(?:\d+|' \
-                 'F)))*)( .+)?$'
-valid_diceroll_re = re.compile(valid_diceroll, re.I)
+valid_diceroll = re.compile(r'^([+-]?(?:\d+|\d*d(?:\d+|F))(?:[+-](?:\d+|\d*d(?:\d+|F)))*)( .+)?$', re.I)
 sign_re = re.compile(r'[+-]?(?:\d*d)?(?:\d+|F)', re.I)
 split_re = re.compile(r'([\d+-]*)d?(F|\d*)', re.I)
 
 
 def n_rolls(count, n):
-    """roll an n-sided die count times"""
+    """roll an n-sided die count times
+    :type count: int | str
+    :type n: int
+    """
     if n == "F":
-        return [random.randint(-1, 1) for x in xrange(min(count, 100))]
+        return [random.randint(-1, 1) for x in range(min(count, 100))]
     if n < 2:  # it's a coin
         if count < 100:
-            return [random.randint(0, 1) for x in xrange(count)]
+            return [random.randint(0, 1) for x in range(count)]
         else:  # fake it
             return [int(random.normalvariate(.5 * count, (.75 * count) ** .5))]
     else:
         if count < 100:
-            return [random.randint(1, n) for x in xrange(count)]
+            return [random.randint(1, n) for x in range(count)]
         else:  # fake it
             return [int(random.normalvariate(.5 * (1 + n) * count,
                                              (((n + 1) * (2 * n + 1) / 6. -
                                                (.5 * (1 + n)) ** 2) * count) ** .5))]
 
 
-@hook.command('roll')
-#@hook.regex(valid_diceroll, re.I)
-@hook.command
-def dice(inp):
-    """dice <dice roll> -- Simulates dice rolls. Example of <dice roll>:
-    'dice 2d20-d5+4 roll 2'. D20s, subtract 1D5, add 4"""
+# @hook.regex(valid_diceroll, re.I)
+@asyncio.coroutine
+@hook.command("roll", "dice")
+def dice(text, notice):
+    """<dice roll> - simulates dice rolls. Example: 'dice 2d20-d5+4 roll 2': D20s, subtract 1D5, add 4
+    :type text: str
+    """
 
-    try:  # if inp is a re.match object...
-        (inp, desc) = inp.groups()
-    except AttributeError:
-        (inp, desc) = valid_diceroll_re.match(inp).groups()
+    if hasattr(text, "groups"):
+        text, desc = text.groups()
+    else:  # type(text) == str
+        match = valid_diceroll.match(whitespace_re.sub("", text))
+        if match:
+            text, desc = match.groups()
+        else:
+            notice("Invalid dice roll '{}'".format(text))
+            return
 
-    if "d" not in inp:
+    if "d" not in text:
         return
 
-    spec = whitespace_re.sub('', inp)
-    if not valid_diceroll_re.match(spec):
-        return "Invalid dice roll"
+    spec = whitespace_re.sub('', text)
+    if not valid_diceroll.match(spec):
+        notice("Invalid dice roll '{}'".format(text))
+        return
     groups = sign_re.findall(spec)
 
     total = 0
@@ -74,7 +83,7 @@ def dice(inp):
             try:
                 if count > 0:
                     d = n_rolls(count, side)
-                    rolls += map(str, d)
+                    rolls += list(map(str, d))
                     total += sum(d)
                 else:
                     d = n_rolls(-count, side)

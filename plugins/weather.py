@@ -1,10 +1,11 @@
-from util import hook, http, web
+from cloudbot import hook
+from cloudbot.util import http, web
 
 base_url = "http://api.wunderground.com/api/{}/{}/q/{}.json"
 
 
-@hook.command(autohelp=None)
-def weather(inp, reply=None, db=None, nick=None, bot=None, notice=None):
+@hook.command(autohelp=False)
+def weather(text, reply, db, nick, bot, notice):
     """weather <location> [dontsave] -- Gets weather data
     for <location> from Wunderground."""
 
@@ -17,9 +18,10 @@ def weather(inp, reply=None, db=None, nick=None, bot=None, notice=None):
     db.execute("create table if not exists weather(nick primary key, loc)")
 
     # if there is no input, try getting the users last location from the DB
-    if not inp:
-        location = db.execute("select loc from weather where nick=lower(?)",
-                              [nick]).fetchone()
+    if not text:
+        location = db.execute("select loc from weather where nick=lower(:nick)",
+                              {"nick": nick}).fetchone()
+        print(location)
         if not location:
             # no location saved in the database, send the user help text
             notice(weather.__doc__)
@@ -30,13 +32,13 @@ def weather(inp, reply=None, db=None, nick=None, bot=None, notice=None):
         dontsave = True
     else:
         # see if the input ends with "dontsave"
-        dontsave = inp.endswith(" dontsave")
+        dontsave = text.endswith(" dontsave")
 
         # remove "dontsave" from the input string after checking for it
         if dontsave:
-            loc = inp[:-9].strip().lower()
+            loc = text[:-9].strip().lower()
         else:
-            loc = inp
+            loc = text
 
     location = http.quote_plus(loc)
 
@@ -84,7 +86,7 @@ def weather(inp, reply=None, db=None, nick=None, bot=None, notice=None):
         "tomorrow_high_c": forecast_tomorrow['high']['celsius'],
         "tomorrow_low_f": forecast_tomorrow['low']['fahrenheit'],
         "tomorrow_low_c": forecast_tomorrow['low']['celsius'],
-        "url": web.isgd(response["current_observation"]['forecast_url'] + "?apiref=e535207ff4757b18")
+        "url": web.shorten(response["current_observation"]['forecast_url'] + "?apiref=e535207ff4757b18")
     }
 
     reply("{place} - \x02Current:\x02 {conditions}, {temp_f}F/{temp_c}C, {humidity}, "
@@ -94,6 +96,6 @@ def weather(inp, reply=None, db=None, nick=None, bot=None, notice=None):
           "Low: {tomorrow_low_f}F/{tomorrow_low_c}C - {url}".format(**weather_data))
 
     if location and not dontsave:
-        db.execute("insert or replace into weather(nick, loc) values (?,?)",
-                   (nick.lower(), location))
+        db.execute("insert or replace into weather(nick, loc) values (:nick, :loc)",
+                   {"nick": nick.lower(), "loc": loc})
         db.commit()

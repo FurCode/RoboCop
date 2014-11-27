@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 # RoboCop
 
 ## About
@@ -5,53 +6,59 @@
 RoboCop is an IRC bot, designed for Python 2.7.x, which is based on Cloudbot (by Luke Rogers and the Cloudbot contributors), that is in turn based on Skybot.
 
 ## Getting and using RoboCop
+=======
+# CloudBot Refresh
 
-### Install
+## About
 
-Before you can run the bot, you need to install a few Python dependencies. LXML is required while Enchant and PyDNS are needed for several plugins.
+CloudBotRefresh is the newest generation of CloudBot, the python IRC bot originally based on [Skybot](http://git.io/skybot).
+
+## Installing CloudBot
+
+To install CloudBotRefresh on *Unix, see [docs/installing-unix.md](https://github.com/CloudBotIRC/CloudBotRefresh/blob/python3.4/docs/installing-unix.md)
+
+To install CloudBotRefresh on Windows, see [docs/installing-windows.md](https://github.com/CloudBotIRC/CloudBotRefresh/blob/python3.4/docs/installing-windows.md)
+
+If you're going to be actively developing on CloudBotRefresh, and submitting PRs back, we recommend running CloudBotRefresh inside Vagrant. This allows everyone to have an identical development environment.
+>>>>>>> ec0a73b4a4600de997bcd097636a4aac081bc307
+
+To install CloudBotRefresh in Vagrant (both *Unix and Windows), see [docs/installing-vagrant.md](https://github.com/CloudBotIRC/CloudBotRefresh/blob/python3.4/docs/installing-vagrant.md)
 
 
-These can be installed with `pip` (The Python package manager):
+### Running CloudBot
 
-    [sudo] pip install -r requirements.txt
-    
-If you use `pip`, you will also need the following packages on linux or `pip` will fail to install the requirements.
-   ```python, python-dev, libenchant-dev, libenchant1c2a, libxslt-dev, libxml2-dev.```
-
-#### How to install `pip`
-
-    curl -O http://python-distribute.org/distribute_setup.py # or download with your browser on windows
-    python distribute_setup.py
-    easy_install pip
-    
-If you are unable to use pip, there are Windows installers for LXML available for [64 bit](https://pypi.python.org/packages/2.7/l/lxml/lxml-2.3.win-amd64-py2.7.exe) and [32 bit](https://pypi.python.org/packages/2.7/l/lxml/lxml-2.3.win32-py2.7.exe) versions of Python.
-
-### Run
-
-Before you run the bot, rename `config.default` to `config` and edit it with your preferred settings.
+Before you run the bot, rename `config.default` to `config.json` and edit it with your preferred settings. You can check if your JSON is valid using [jsonlint.com](http://jsonlint.com/)!
 
 Once you have installed the required dependencies and renamed the config file, you can run the bot! Make sure you are in the correct folder and run the following command:
 
-`python bot.py`
+```
+python3.4 -m cloudbot
+```
 
-On Windows you can usually just double-click `bot.py` to start the bot, as long as you have Python installed correctly.
+Note that you can also run the `cloudbot/__main__.py` file directly, which will work from any directory.
+```
+python3.4 CloudBotRefresh/cloudbot/__main__.py
+```
+Specify the path as /path/to/repository/cloudbot/__main__.py, where `cloudbot` is inside the repository directory.
 
 ## Getting help with CloudBot
 
 ### Documentation
 
-To configure your CloudBot, visit the [Config Wiki Page](http://git.io/cloudbotircconfig).
+To configure your CloudBot, visit the [Config Wiki Page](https://github.com/CloudBotIRC/CloudBotRefresh/wiki/Config).
 
-To write your own plugins, visit the [Plugin Wiki Page](http://git.io/cloudbotircplugins).
+To write your own modules, visit the [Module Wiki Page](https://github.com/CloudBotIRC/CloudBotRefresh/wiki/Writing-Refresh-Modules).
 
-More at the [Wiki Main Page](http://git.io/cloudbotircwiki).
+More at the [Wiki Main Page](https://github.com/CloudBotIRC/CloudBotRefresh/wiki).
 
-(some of the information on the wiki is outdated and needs to be rewritten)
+Note that the configuration page, and the main wiki page, are still for CloudBot Develop. The Module Wiki Page has been
+rewritten for refresh, but the other pages are outdated.
 
 ### Support
 
 The developers reside in [#techsupport](irc://irc.snoonet.org/techsupport) and would be glad to help you.
 
+<<<<<<< HEAD
 If you think you have found a bug/have a idea/suggestion, please **open a issue** here on Github.
 
 ### Requirements
@@ -63,6 +70,9 @@ The module `Enchant` is needed for the spellcheck plugin.
 The module `PyDNS` is needed for SRV record lookup in the mcping plugin.
 
 **Windows** users: Windows compatibility some plugins is **broken** (such as ping), but we do intend to add it. Eventually.
+=======
+If you think you have found a bug/have a idea/suggestion, please **open a issue** here on Github and contact us on IRC!
+>>>>>>> ec0a73b4a4600de997bcd097636a4aac081bc307
 
 ## License
 

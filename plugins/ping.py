@@ -3,21 +3,20 @@ import subprocess
 import re
 import os
 
-from util import hook
-
+from cloudbot import hook
 
 ping_regex = re.compile(r"(\d+.\d+)/(\d+.\d+)/(\d+.\d+)/(\d+.\d+)")
 
 
-@hook.command
-def ping(inp, reply=None):
-    """ping <host> [count] -- Pings <host> [count] times."""
+@hook.command()
+def ping(text, reply):
+    """<host> [count] - pings <host> [count] times"""
 
     if os.name == "nt":
         return "Sorry, this command is not supported on Windows systems."
         # TODO: Rewrite this entire command to work on Windows, somehow
 
-    args = inp.split(' ')
+    args = text.split(' ')
     host = args[0]
 
     # check for a second argument and set the ping count
@@ -36,7 +35,7 @@ def ping(inp, reply=None):
 
     reply("Attempting to ping {} {} times...".format(host, count))
 
-    pingcmd = subprocess.check_output(["ping", "-c", count, host])
+    pingcmd = subprocess.check_output(["ping", "-c", count, host]).decode("utf-8")
     if "request timed out" in pingcmd or "unknown host" in pingcmd:
         return "error: could not ping host"
     else:

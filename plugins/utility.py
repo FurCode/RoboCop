@@ -1,11 +1,12 @@
+import base64
+import codecs
 import hashlib
 import collections
 import re
+import binascii
 
-from util import hook, text
-
-
-# variables
+from cloudbot import hook
+from cloudbot.util import formatting
 
 colors = collections.OrderedDict([
     ('red', '\x0304'),
@@ -23,7 +24,7 @@ colors = collections.OrderedDict([
 
 # helper functions
 
-strip_re = re.compile("(\x03|\x02|\x1f)(?:,?\d{1,2}(?:,\d{1,2})?)?", re.UNICODE)
+strip_re = re.compile("(\x03|\x02|\x1f|\x0f)(?:,?\d{1,2}(?:,\d{1,2})?)?")
 
 
 def strip(string):
@@ -33,117 +34,112 @@ def strip(string):
 # basic text tools
 
 
-## TODO: make this capitalize sentences correctly
-@hook.command("capitalise")
-@hook.command
-def capitalize(inp):
-    """capitalize <string> -- Capitalizes <string>."""
-    return inp.capitalize()
+@hook.command("capitalise", "capitalize")
+def capitalize(text):
+    """capitalize <string> -- Capitalizes <string>.
+    :type text: str
+    """
+    return ". ".join([sentence.capitalize() for sentence in text.split(". ")])
 
 
 @hook.command
-def upper(inp):
+def upper(text):
     """upper <string> -- Convert string to uppercase."""
-    return inp.upper()
+    return text.upper()
 
 
 @hook.command
-def lower(inp):
+def lower(text):
     """lower <string> -- Convert string to lowercase."""
-    return inp.lower()
+    return text.lower()
 
 
 @hook.command
-def titlecase(inp):
+def titlecase(text):
     """title <string> -- Convert string to title case."""
-    return inp.title()
+    return text.title()
 
 
 @hook.command
-def swapcase(inp):
+def swapcase(text):
     """swapcase <string> -- Swaps the capitalization of <string>."""
-    return inp.swapcase()
+    return text.swapcase()
 
 
 # encoding
 
-
-@hook.command
-def rot13(inp):
+@hook.command("rot13")
+def rot13_encode(text):
     """rot13 <string> -- Encode <string> with rot13."""
-    return inp.encode('rot13')
+    encoder = codecs.getencoder("rot-13")
+    return encoder(text)[0]
 
 
-@hook.command
-def base64(inp):
+@hook.command("base64")
+def base64_encode(text):
     """base64 <string> -- Encode <string> with base64."""
-    return inp.encode('base64')
+    return base64.b64encode(text.encode()).decode()
 
 
-@hook.command
-def unbase64(inp):
+@hook.command("debase64", "unbase64")
+def base64_decode(text, notice):
     """unbase64 <string> -- Decode <string> with base64."""
-    return inp.decode('base64')
-
-
-@hook.command
-def checkbase64(inp):
     try:
-        decoded = inp.decode('base64')
-        recoded = decoded.encode('base64').strip()
-        is_base64 = recoded == inp
-    except:
-        return '"{}" is not base64 encoded'.format(inp)
+        return base64.b64decode(text.encode()).decode()
+    except binascii.Error:
+        notice("Invalid base64 string '{}'".format(text))
 
-    if is_base64:
-        return '"{}" is base64 encoded'.format(recoded)
+
+@hook.command("isbase64", "checkbase64")
+def base64_check(text):
+    """isbase64 <string> -- Checks if <string> is a valid base64 encoded string"""
+    try:
+        base64.b64decode(text.encode())
+    except binascii.Error:
+        return "'{}' is not a valid base64 encoded string".format(text)
     else:
-        return '"{}" is not base64 encoded'.format(inp)
+        return "'{}' is a valid base64 encoded string".format(text)
 
 
 @hook.command
-def unescape(inp):
-    """unescape <string> -- Unescapes <string>."""
-    try:
-        return inp.decode('unicode-escape')
-    except Exception as e:
-        return "Error: {}".format(e)
+def unescape(text):
+    """unescape <string> -- Unicode unescapes <string>."""
+    decoder = codecs.getdecoder("unicode_escape")
+    return decoder(text)[0]
 
 
 @hook.command
-def escape(inp):
-    """escape <string> -- Escapes <string>."""
-    try:
-        return inp.encode('unicode-escape')
-    except Exception as e:
-        return "Error: {}".format(e)
+def escape(text):
+    """escape <string> -- Unicode escapes <string>."""
+    encoder = codecs.getencoder("unicode_escape")
+    return encoder(text)[0].decode()
 
 
 # length
 
 
 @hook.command
-def length(inp):
-    """length <string> -- gets the length of <string>"""
-    return "The length of that string is {} characters.".format(len(inp))
+def length(text):
+    """length <string> -- Gets the length of <string>"""
+    return "The length of that string is {} characters.".format(len(text))
 
 
 # reverse
 
 
 @hook.command
-def reverse(inp):
-    """reverse <string> -- reverses <string>."""
-    return inp[::-1]
+def reverse(text):
+    """reverse <string> -- Reverses <string>."""
+    return text[::-1]
 
 
 # hashing
 
 
 @hook.command("hash")
-def hash_command(inp):
+def hash_command(text):
     """hash <string> -- Returns hashes of <string>."""
-    return ', '.join(x + ": " + getattr(hashlib, x)(inp).hexdigest()
+    return ', '.join(x + ": " + getattr(hashlib, x)(text.encode("utf-8")).hexdigest()
                      for x in ['md5', 'sha1', 'sha256'])
 
 
@@ -151,22 +147,22 @@ def hash_command(inp):
 
 
 @hook.command
-def munge(inp):
+def munge(text):
     """munge <text> -- Munges up <text>."""
-    return text.munge(inp)
+    return formatting.munge(text)
 
 
 # colors - based on code by Reece Selwood - <https://github.com/hitzler/homero>
 
 
 @hook.command
-def rainbow(inp):
-    inp = unicode(inp)
-    inp = strip(inp)
-    col = colors.items()
+def rainbow(text):
+    text = str(text)
+    text = strip(text)
+    col = list(colors.items())
     out = ""
     l = len(colors)
-    for i, t in enumerate(inp):
+    for i, t in enumerate(text):
         if t == " ":
             out += t
         else:
@@ -175,23 +171,37 @@ def rainbow(inp):
 
 
 @hook.command
-def wrainbow(inp):
-    inp = unicode(inp)
-    col = colors.items()
-    inp = strip(inp).split(' ')
+def wrainbow(text):
+    text = str(text)
+    col = list(colors.items())
+    text = strip(text).split(' ')
     out = []
     l = len(colors)
-    for i, t in enumerate(inp):
+    for i, t in enumerate(text):
         out.append(col[i % l][1] + t)
     return ' '.join(out)
 
 
 @hook.command
-def usa(inp):
-    inp = strip(inp)
+def usa(text):
+    text = strip(text)
     c = [colors['red'], '\x0300', colors['blue']]
     l = len(c)
     out = ''
-    for i, t in enumerate(inp):
+    for i, t in enumerate(text):
         out += c[i % l] + t
     return out
+
+
+@hook.command
+def superscript(text):
+    regular = "abcdefghijklmnoprstuvwxyzABDEGHIJKLMNOPRTUVW0123456789+-=()"
+    super_script = "ᵃᵇᶜᵈᵉᶠᵍʰⁱʲᵏˡᵐⁿᵒᵖʳˢᵗᵘᵛʷˣʸᶻᴬᴮᴰᴱᴳᴴᴵᴶᴷᴸᴹᴺᴼᴾᴿᵀᵁⱽᵂ⁰¹²³⁴⁵⁶⁷⁸⁹⁺⁻⁼⁽⁾"
+    result = []
+    for char in text:
+        index = regular.find(char)
+        if index != -1:
+            result.append(super_script[index])
+        else:
+            result.append(char)
+    return "".join(result)

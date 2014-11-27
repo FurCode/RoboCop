@@ -1,7 +1,6 @@
 import re
 
-from util import hook
-
+from cloudbot import hook
 
 db_ready = False
 
@@ -90,21 +89,20 @@ def db_search(db, nick, query):
     """, (query, nick))
 
 
-@hook.command("notes")
-@hook.command
-def note(inp, nick='', chan='', db=None, notice=None, bot=None):
-    """note(s) <add|del|list|search> args -- Manipulates your list of notes."""
+@hook.command("note", "notes")
+def note(text, nick, db, notice):
+    """<add|del|list|search> args - manipulates your list of notes"""
 
     db_init(db)
 
-    parts = inp.split()
+    parts = text.split()
     cmd = parts[0].lower()
 
     args = parts[1:]
 
     # code to allow users to access each others factoids and a copy of help
     # ".note (add|del|list|search) [@user] args -- Manipulates your list of todos."
-    #if len(args) and args[0].startswith("@"):
+    # if len(args) and args[0].startswith("@"):
     #    nick = args[0][1:]
     #    args = args[1:]
 

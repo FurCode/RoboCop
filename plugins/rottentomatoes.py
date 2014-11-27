@@ -1,4 +1,5 @@
-from util import http, hook
+from cloudbot import hook
+from cloudbot.util import http
 
 api_root = 'http://api.rottentomatoes.com/api/public/v1.0/'
 movie_search_url = api_root + 'movies.json'
@@ -35,5 +36,5 @@ def rottentomatoes(inp, bot=None):
     fresh = critics_score * review_count / 100
     rotten = review_count - fresh
 
-    return u"{} - Critics Rating: \x02{}%\x02 ({} liked, {} disliked) " \
+    return "{} - Critics Rating: \x02{}%\x02 ({} liked, {} disliked) " \
            "Audience Rating: \x02{}%\x02 - {}".format(title, critics_score, fresh, rotten, audience_score, url)

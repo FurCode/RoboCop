@@ -1,19 +1,18 @@
 import re
 
-from util import hook, http, text
-
+from cloudbot import hook
+from cloudbot.util import http, formatting
 
 api_url = "http://minecraft.gamepedia.com/api.php?action=opensearch"
 mc_url = "http://minecraft.gamepedia.com/"
 
 
-@hook.command
-def mcwiki(inp):
-    """mcwiki <phrase> -- Gets the first paragraph of
-    the Minecraft Wiki article on <phrase>."""
+@hook.command()
+def mcwiki(text):
+    """mcwiki <phrase> - gets the first paragraph of the Minecraft Wiki article on <phrase>"""
 
     try:
-        j = http.get_json(api_url, search=inp)
+        j = http.get_json(api_url, search=text)
     except (http.HTTPError, http.URLError) as e:
         return "Error fetching search results: {}".format(e)
     except ValueError as e:
@@ -44,8 +43,8 @@ def mcwiki(inp):
         if p.text_content():
             summary = " ".join(p.text_content().splitlines())
             summary = re.sub("\[\d+\]", "", summary)
-            summary = text.truncate_str(summary, 200)
-            return u"{} :: {}".format(summary, url)
+            summary = formatting.truncate_str(summary, 200)
+            return "{} :: {}".format(summary, url)
 
     # this shouldn't happen
     return "Unknown Error."

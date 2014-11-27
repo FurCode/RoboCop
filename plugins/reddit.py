@@ -1,19 +1,23 @@
 from datetime import datetime
+from lxml import html
 import re
 import random
+import requests
+import asyncio
 
-from util import hook, http, text, timesince
+from cloudbot import hook
+from cloudbot.util import urlnorm, timesince, formatting
 
-
-reddit_re = (r'.*(((www\.)?reddit\.com/r|redd\.it)[^ ]+)', re.I)
+reddit_re = re.compile(r'.*(((www\.)?reddit\.com/r|redd\.it)[^ ]+)', re.I)
 
 base_url = "http://reddit.com/r/{}/.json"
 short_url = "http://redd.it/{}"
 
 
-@hook.regex(*reddit_re)
+@hook.regex(reddit_re)
 def reddit_url(match):
-    thread = http.get_html(match.group(0))
+    r = requests.get(urlnorm.normalize(match.group(1), assume_scheme="http"))
+    thread = html.fromstring(r.text)
 
     title = thread.xpath('//title/text()')[0]
     upvotes = thread.xpath("//span[@class='upvotes']/span[@class='number']/text()")[0]
@@ -22,18 +26,19 @@ def reddit_url(match):
     timeago = thread.xpath("//div[@id='siteTable']//p[@class='tagline']/time/text()")[0]
     comments = thread.xpath("//div[@id='siteTable']//a[@class='comments']/text()")[0]
 
-    return u'\x02{}\x02 - posted by \x02{}\x02 {} ago - {} upvotes, {} downvotes - {}'.format(
+    return '\x02{}\x02 - posted by \x02{}\x02 {} ago - {} upvotes, {} downvotes - {}'.format(
         title, author, timeago, upvotes, downvotes, comments)
 
 
+@asyncio.coroutine
 @hook.command(autohelp=False)
-def reddit(inp):
-    """reddit <subreddit> [n] -- Gets a random post from <subreddit>, or gets the [n]th post in the subreddit."""
+def reddit(text, loop):
+    """<subreddit> [n] - gets a random post from <subreddit>, or gets the [n]th post in the subreddit"""
     id_num = None
 
-    if inp:
+    if text:
         # clean and split the input
-        parts = inp.lower().strip().split()
+        parts = text.lower().strip().split()
 
         # find the requested post number (if any)
         if len(parts) > 1:
@@ -48,7 +53,8 @@ def reddit(inp):
         url = "http://reddit.com/.json"
 
     try:
-        data = http.get_json(url, user_agent=http.ua_chrome)
+        request = yield from loop.run_in_executor(None, requests.get, url)
+        data = request.json()
     except Exception as e:
         return "Error: " + str(e)
     data = data["data"]["children"]
@@ -63,7 +69,7 @@ def reddit(inp):
     else:
         item = random.choice(data)["data"]
 
-    item["title"] = text.truncate_str(item["title"], 50)
+    item["title"] = formatting.truncate_str(item["title"], 50)
     item["link"] = short_url.format(item["id"])
 
     raw_time = datetime.fromtimestamp(int(item["created_utc"]))
@@ -74,6 +80,6 @@ def reddit(inp):
     else:
         item["warning"] = ""
 
-    return u"\x02{title} : {subreddit}\x02 - posted by \x02{author}\x02" \
-           " {timesince} ago - {ups} upvotes, {downs} downvotes -" \
+    return "\x02{title} : {subreddit}\x02 - posted by \x02{author}\x02" \
+           " {timesince} ago - {score} karma -" \
            " {link}{warning}".format(**item)

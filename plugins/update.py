@@ -1,10 +1,11 @@
 from git import Repo
 
+from cloudbot import hook
+from cloudbot.util import web
 
-from util import hook, web
 
-@hook.command
-def update(inp, bot=None):
+@hook.command()
+def update():
     repo = Repo()
     git = repo.git
     try:
@@ -12,13 +13,13 @@ def update(inp, bot=None):
     except Exception as e:
         return e
     if "\n" in pull:
-        return web.haste(pull)
+        return web.paste(pull)
     else:
         return pull
 
 
-@hook.command
-def version(inp, bot=None):
+@hook.command()
+def version():
     repo = Repo()
 
     # get origin and fetch it

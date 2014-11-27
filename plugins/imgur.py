@@ -1,8 +1,8 @@
 import re
 import random
 
-from util import hook, http, web
-
+from cloudbot import hook
+from cloudbot.util import http, web
 
 base_url = "http://reddit.com/r/{}/.json"
 imgur_re = re.compile(r'http://(?:i\.)?imgur\.com/(a/)?(\w+\b(?!/))\.?\w?')
@@ -18,18 +18,18 @@ def is_valid(data):
 
 
 @hook.command(autohelp=False)
-def imgur(inp):
-    """imgur [subreddit] -- Gets the first page of imgur images from [subreddit] and returns a link to them.
-     If [subreddit] is undefined, return any imgur images"""
-    if inp:
+def imgur(text):
+    """[subreddit] - returns a link to the first page of imgur images from [subreddit],
+     or the first page of all imgur images if no subreddit is provided"""
+    if text:
         # see if the input ends with "nsfw"
-        show_nsfw = inp.endswith(" nsfw")
+        show_nsfw = text.endswith(" nsfw")
 
         # remove "nsfw" from the input string after checking for it
         if show_nsfw:
-            inp = inp[:-5].strip().lower()
+            text = text[:-5].strip().lower()
 
-        url = base_url.format(inp.strip())
+        url = base_url.format(text.strip())
     else:
         url = "http://www.reddit.com/domain/imgur.com/.json"
         show_nsfw = False
@@ -77,6 +77,6 @@ def imgur(inp):
         return "No images found (use .imgur <subreddit> nsfw to show explicit content)"
 
     if show_nsfw:
-        return "{} \x02NSFW\x02".format(web.isgd("http://imgur.com/" + ','.join(items)))
+        return "{} \x02NSFW\x02".format(web.try_shorten("http://imgur.com/" + ','.join(items)))
     else:
-        return web.isgd("http://imgur.com/" + ','.join(items))
+        return web.try_shorten("http://imgur.com/" + ','.join(items))

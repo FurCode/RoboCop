@@ -1,8 +1,8 @@
 import csv
-import StringIO
+import io
 
-from util import hook, http, text
-
+from cloudbot import hook
+from cloudbot.util import http
 
 gauge_url = "http://www.mysteamgauge.com/search?username={}"
 
@@ -29,21 +29,19 @@ def is_number(s):
 def unicode_dictreader(utf8_data, **kwargs):
     csv_reader = csv.DictReader(utf8_data, **kwargs)
     for row in csv_reader:
-        yield dict([(key.lower(), unicode(value, 'utf-8')) for key, value in row.iteritems()])
+        yield dict([(key.lower(), str(value, 'utf-8')) for key, value in row.items()])
 
 
-@hook.command('sc')
-@hook.command
-def steamcalc(inp, reply=None):
-    """steamcalc <username> [currency] - Gets value of steam account and
-       total hours played. Uses steamcommunity.com/id/<nickname>. """
+@hook.command("steamcalc", "sc")
+def steamcalc(text, reply):
+    """steamcalc <username> [currency] - Gets value of steam account and total hours played. Uses steamcommunity.com/id/<nickname>. """
 
     # check if the user asked us to force reload
-    force_reload = inp.endswith(" forcereload")
+    force_reload = text.endswith(" forcereload")
     if force_reload:
-        name = inp[:-12].strip().lower()
+        name = text[:-12].strip().lower()
     else:
-        name = inp.strip()
+        name = text.strip()
 
     if force_reload:
         try:
@@ -66,7 +64,7 @@ def steamcalc(inp, reply=None):
             except (http.HTTPError, http.URLError):
                 return "Could not get data for this user."
 
-    csv_data = StringIO.StringIO(request)  # we use StringIO because CSV can't read a string
+    csv_data = io.StringIO(request)  # we use StringIO because CSV can't read a string
     reader = unicode_dictreader(csv_data)
 
     # put the games in a list

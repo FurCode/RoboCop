@@ -1,12 +1,13 @@
 from bs4 import BeautifulSoup
 
-from util import hook, http, urlnorm
+from cloudbot import hook
+from cloudbot.util import http, urlnorm
 
 
-@hook.command
-def title(inp):
+@hook.command()
+def title(text):
     """title <url> -- gets the title of a web page"""
-    url = urlnorm.normalize(inp.encode('utf-8'), assume_scheme="http")
+    url = urlnorm.normalize(text, assume_scheme="http")
 
     try:
         page = http.open(url)
@@ -20,4 +21,4 @@ def title(inp):
     if not page_title:
         return "Could not find title."
 
-    return u"{} [{}]".format(page_title, real_url)
+    return "{} [{}]".format(page_title, real_url)

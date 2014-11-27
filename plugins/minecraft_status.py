@@ -1,11 +1,12 @@
 import json
 
-from util import hook, http
+from cloudbot import hook
+from cloudbot.util import http
 
 
 @hook.command(autohelp=False)
-def mcstatus(inp):
-    """mcstatus -- Checks the status of various Mojang (the creators of Minecraft) servers."""
+def mcstatus():
+    """- gets the status of various Mojang (Minecraft) servers"""
 
     try:
         request = http.get("http://status.mojang.com/check")
@@ -21,7 +22,7 @@ def mcstatus(inp):
     green = []
     yellow = []
     red = []
-    for server, status in data.items():
+    for server, status in list(data.items()):
         if status == "green":
             green.append(server)
         elif status == "yellow":
@@ -41,4 +42,4 @@ def mcstatus(inp):
         out += "\x034\x02Offline\x02\x0f: " + ", ".join(red)
 
     return "\x0f" + out.replace(".mojang.com", ".mj") \
-                       .replace(".minecraft.net", ".mc")
+        .replace(".minecraft.net", ".mc")

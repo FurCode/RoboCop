@@ -1,230 +1,354 @@
-import os
-import sys
+import asyncio
 import re
-import json
-import time
-import subprocess
 
-from util import hook
+from cloudbot import hook
 
 
-@hook.command(autohelp=False, permissions=["permissions_users"])
-def permissions(inp, bot=None, notice=None):
-    """permissions [group] -- lists the users and their permission level who have permissions."""
-    permissions = bot.config.get("permissions", [])
-    groups = []
-    if inp:
-        for k in permissions:
-            if inp == k:
-                groups.append(k)
+@asyncio.coroutine
+@hook.command("groups", "listgroups", "permgroups", permissions=["permissions_users"], autohelp=False)
+def get_permission_groups(conn):
+    """- lists all valid groups
+    :type conn: cloudbot.client.Client
+    """
+    return "Valid groups: {}".format(conn.permissions.get_groups())
+
+
+@asyncio.coroutine
+@hook.command("gperms", permissions=["permissions_users"])
+def get_group_permissions(text, conn, notice):
+    """<group> - lists permissions given to <group>
+    :type text: str
+    :type conn: cloudbot.client.Client
+    """
+    group = text.strip().lower()
+    permission_manager = conn.permissions
+    group_users = permission_manager.get_group_users(group)
+    group_permissions = permission_manager.get_group_permissions(group)
+    if group_permissions:
+        return "Group {} has permissions {}".format(group, group_permissions)
+    elif group_users:
+        return "Group {} exists, but has no permissions".format(group)
     else:
-        for k in permissions:
-            groups.append(k)
-    if not groups:
-        notice("{} is not a group with permissions".format(inp))
-        return None
+        notice("Unknown group '{}'".format(group))
 
-    for v in groups:
-        members = ""
-        for value in permissions[v]["users"]:
-            members = members + value + ", "
-        if members:
-            notice("the members in the {} group are..".format(v))
-            notice(members[:-2])
+
+@asyncio.coroutine
+@hook.command("gusers", permissions=["permissions_users"])
+def get_group_users(text, conn, notice):
+    """<group> - lists users in <group>
+    :type text: str
+    :type conn: cloudbot.client.Client
+    """
+    group = text.strip().lower()
+    permission_manager = conn.permissions
+    group_users = permission_manager.get_group_users(group)
+    group_permissions = permission_manager.get_group_permissions(group)
+    if group_users:
+        return "Group {} has members: {}".format(group, group_users)
+    elif group_permissions:
+        return "Group {} exists, but has no members".format(group, group_permissions)
+    else:
+        notice("Unknown group '{}'".format(group))
+
+
+@asyncio.coroutine
+@hook.command("uperms", autohelp=False)
+def get_user_permissions(text, conn, mask, has_permission, notice):
+    """[user] - lists all permissions given to [user], or the caller if no user is specified
+    :type text: str
+    :type conn: cloudbot.client.Client
+    :type mask: str
+    """
+    if text:
+        if not has_permission("permissions_users"):
+            notice("Sorry, you are not allowed to use this command on another user")
+            return
+        user = text.strip().lower()
+    else:
+        user = mask.lower()
+
+    permission_manager = conn.permissions
+
+    user_permissions = permission_manager.get_user_permissions(user)
+    if user_permissions:
+        return "User {} has permissions: {}".format(user, user_permissions)
+    else:
+        return "User {} has no elevated permissions".format(user)
+
+
+@asyncio.coroutine
+@hook.command("ugroups", autohelp=False)
+def get_user_groups(text, conn, mask, has_permission, notice):
+    """[user] - lists all permissions given to [user], or the caller if no user is specified
+    :type text: str
+    :type conn: cloudbot.client.Client
+    :type mask: str
+    """
+    if text:
+        if not has_permission("permissions_users"):
+            notice("Sorry, you are not allowed to use this command on another user")
+            return
+        user = text.strip().lower()
+    else:
+        user = mask.lower()
+
+    permission_manager = conn.permissions
+
+    user_groups = permission_manager.get_user_groups(user)
+    if user_groups:
+        return "User {} is in groups: {}".format(user, user_groups)
+    else:
+        return "User {} is in no permission groups".format(user)
+
+
+@asyncio.coroutine
+@hook.command("deluser", permissions=["permissions_users"])
+def remove_permission_user(text, bot, conn, notice, reply):
+    """<user> [group] - removes <user> from [group], or from all groups if no group is specified
+    :type text: str
+    :type bot: cloudbot.bot.CloudBot
+    :type conn: cloudbot.client.Client
+    """
+    split = text.split()
+    if len(split) > 2:
+        notice("Too many arguments")
+        return
+    elif len(split) < 1:
+        notice("Not enough arguments")
+        return
+
+    if len(split) > 1:
+        user = split[0].lower()
+        group = split[1].lower()
+    else:
+        user = split[0].lower()
+        group = None
+
+    permission_manager = conn.permissions
+    changed = False
+    if group is not None:
+        if not permission_manager.group_exists(group):
+            notice("Unknown group '{}'".format(group))
+            return
+        changed_masks = permission_manager.remove_group_user(group, user)
+        if changed_masks:
+            changed = True
+        if len(changed_masks) > 1:
+            reply("Removed {} and {} from {}".format(", ".join(changed_masks[:-1]), changed_masks[-1], group))
+        elif changed_masks:
+            reply("Removed {} from {}".format(changed_masks[0], group))
         else:
-            notice("there are no members in the {} group".format(v))
-
-
-@hook.command(permissions=["permissions_users"])
-def deluser(inp, bot=None, notice=None):
-    """deluser [user] [group] -- removes elevated permissions from [user].
-    If [group] is specified, they will only be removed from [group]."""
-    permissions = bot.config.get("permissions", [])
-    inp = inp.split(" ")
-    groups = []
-    try:
-        specgroup = inp[1]
-    except IndexError:
-        specgroup = None
-        for k in permissions:
-            groups.append(k)
+            reply("No masks in {} matched {}".format(group, user))
     else:
-        for k in permissions:
-            if specgroup == k:
-                groups.append(k)
-    if not groups:
-        notice("{} is not a group with permissions".format(inp[1]))
-        return None
+        groups = permission_manager.get_user_groups(user)
+        for group in groups:
+            changed_masks = permission_manager.remove_group_user(group, user)
+            if changed_masks:
+                changed = True
+            if len(changed_masks) > 1:
+                reply("Removed {} and {} from {}".format(", ".join(changed_masks[:-1]), changed_masks[-1], group))
+            elif changed_masks:
+                reply("Removed {} from {}".format(changed_masks[0], group))
+        if not changed:
+            reply("No masks with elevated permissions matched {}".format(group, user))
 
-    removed = 0
-    for v in groups:
-        users = permissions[v]["users"]
-        for value in users:
-            if inp[0] == value:
-                users.remove(inp[0])
-                removed = 1
-                notice("{} has been removed from the group {}".format(inp[0], v))
-                json.dump(bot.config, open('config', 'w'), sort_keys=True, indent=2)
-    if specgroup:
-        if removed == 0:
-            notice("{} is not in the group {}".format(inp[0], specgroup))
-    else:
-        if removed == 0:
-            notice("{} is not in any groups".format(inp[0]))
+    if changed:
+        bot.config.save_config()
+        permission_manager.reload()
 
 
-@hook.command(permissions=["permissions_users"])
-def adduser(inp, bot=None, notice=None):
-    """adduser [user] [group] -- adds elevated permissions to [user].
-    [group] must be specified."""
-    permissions = bot.config.get("permissions", [])
-    inp = inp.split(" ")
-    try:
-        user = inp[0]
-        targetgroup = inp[1]
-    except IndexError:
-        notice("the group must be specified")
-        return None
+@asyncio.coroutine
+@hook.command("adduser", permissions=["permissions_users"])
+def add_permissions_user(text, conn, bot, notice, reply):
+    """<user> <group> - adds <user> to <group>
+    :type text: str
+    :type conn: cloudbot.client.Client
+    :type bot: cloudbot.bot.CloudBot
+    """
+    split = text.split()
+    if len(split) > 2:
+        notice("Too many arguments")
+        return
+    elif len(split) < 2:
+        notice("Not enough arguments")
+        return
+
+    user = split[0].lower()
+    group = split[1].lower()
+
     if not re.search('.+!.+@.+', user):
-        notice("the user must be in the form of \"nick!user@host\"")
-        return None
-    try:
-        users = permissions[targetgroup]["users"]
-    except KeyError:
-        notice("no such group as {}".format(targetgroup))
-        return None
-    if user in users:
-        notice("{} is already in {}".format(user, targetgroup))
-        return None
+        # TODO: When we have presence tracking, check if there are any users in the channel with the nick given
+        notice("The user must be in the format 'nick!user@host'")
+        return
 
-    users.append(user)
-    notice("{} has been added to the group {}".format(user, targetgroup))
-    users.sort()
-    json.dump(bot.config, open('config', 'w'), sort_keys=True, indent=2)
+    permission_manager = conn.permissions
 
+    group_exists = permission_manager.group_exists(group)
 
-@hook.command("quit", autohelp=False, permissions=["botcontrol"])
-@hook.command(autohelp=False, permissions=["botcontrol"])
-def stop(inp, nick=None, conn=None):
-    """stop [reason] -- Kills the bot with [reason] as its quit message."""
-    if inp:
-        conn.cmd("QUIT", ["Killed by {} ({})".format(nick, inp)])
+    changed = permission_manager.add_user_to_group(user, group)
+
+    if not changed:
+        reply("User {} is already matched in group {}".format(user, group))
+    elif group_exists:
+        reply("User {} added to group {}".format(user, group))
     else:
-        conn.cmd("QUIT", ["Killed by {}.".format(nick)])
-    time.sleep(5)
-    os.execl("./cloudbot", "cloudbot", "stop")
+        reply("Group {} created with user {}".format(group, user))
+
+    if changed:
+        bot.config.save_config()
+        permission_manager.reload()
 
 
-@hook.command(autohelp=False, permissions=["botcontrol"])
-def restart(inp, nick=None, conn=None, bot=None):
-    """restart [reason] -- Restarts the bot with [reason] as its quit message."""
-    for botcon in bot.conns:
-        if inp:
-            bot.conns[botcon].cmd("QUIT", ["Restarted by {} ({})".format(nick, inp)])
-        else:
-            bot.conns[botcon].cmd("QUIT", ["Restarted by {}.".format(nick)])
-    time.sleep(5)
-    #os.execl("./cloudbot", "cloudbot", "restart")
-    args = sys.argv[:]
-    args.insert(0, sys.executable)
-    os.execv(sys.executable, args)
+@asyncio.coroutine
+@hook.command("stop", "quit", permissions=["botcontrol"], autohelp=False)
+def stop(text, bot):
+    """[reason] - stops me with [reason] as its quit message.
+    :type text: str
+    :type bot: cloudbot.bot.CloudBot
+    """
+    if text:
+        yield from bot.stop(reason=text)
+    else:
+        yield from bot.stop()
 
 
-@hook.command(autohelp=False, permissions=["botcontrol"])
-def clearlogs(inp, input=None):
-    """clearlogs -- Clears the bots log(s)."""
-    subprocess.call(["./cloudbot", "clear"])
+@asyncio.coroutine
+@hook.command(permissions=["botcontrol"], autohelp=False)
+def restart(text, bot):
+    """[reason] - restarts me with [reason] as its quit message.
+    :type text: str
+    :type bot: cloudbot.bot.CloudBot
+    """
+    if text:
+        yield from bot.restart(reason=text)
+    else:
+        yield from bot.restart()
 
 
+@asyncio.coroutine
 @hook.command(permissions=["botcontrol"])
-def join(inp, conn=None, notice=None):
-    """join <channel> -- Joins <channel>."""
-    for target in inp.split(" "):
+def join(text, conn, notice):
+    """<channel> - joins <channel>
+    :type text: str
+    :type conn: cloudbot.client.Client
+    """
+    for target in text.split():
         if not target.startswith("#"):
             target = "#{}".format(target)
         notice("Attempting to join {}...".format(target))
         conn.join(target)
 
 
-@hook.command(autohelp=False, permissions=["botcontrol"])
-def part(inp, conn=None, chan=None, notice=None):
-    """part <channel> -- Leaves <channel>.
-    If [channel] is blank the bot will leave the
-    channel the command was used in."""
-    if inp:
-        targets = inp
+@asyncio.coroutine
+@hook.command(permissions=["botcontrol"], autohelp=False)
+def part(text, conn, chan, notice):
+    """[#channel] - parts [#channel], or the caller's channel if no channel is specified
+    :type text: str
+    :type conn: cloudbot.client.Client
+    :type chan: str
+    """
+    if text:
+        targets = text
     else:
         targets = chan
-    for target in targets.split(" "):
+    for target in targets.split():
         if not target.startswith("#"):
             target = "#{}".format(target)
         notice("Attempting to leave {}...".format(target))
         conn.part(target)
 
 
+@asyncio.coroutine
 @hook.command(autohelp=False, permissions=["botcontrol"])
-def cycle(inp, conn=None, chan=None, notice=None):
-    """cycle <channel> -- Cycles <channel>.
-    If [channel] is blank the bot will cycle the
-    channel the command was used in."""
-    if inp:
-        target = inp
+def cycle(text, conn, chan, notice):
+    """[#channel] - cycles [#channel], or the caller's channel if no channel is specified
+    :type text: str
+    :type conn: cloudbot.client.Client
+    :type chan: str
+    """
+    if text:
+        targets = text
     else:
-        target = chan
-    notice("Attempting to cycle {}...".format(target))
-    conn.part(target)
-    conn.join(target)
+        targets = chan
+    for target in targets.split():
+        if not target.startswith("#"):
+            target = "#{}".format(target)
+        notice("Attempting to cycle {}...".format(target))
+        conn.part(target)
+        conn.join(target)
 
 
+@asyncio.coroutine
 @hook.command(permissions=["botcontrol"])
-def nick(inp, notice=None, conn=None):
-    """nick <nick> -- Changes the bots nickname to <nick>."""
-    if not re.match("^[A-Za-z0-9_|.-\]\[]*$", inp.lower()):
-        notice("Invalid username!")
+def nick(text, conn, notice):
+    """<nick> - changes my nickname to <nick>
+    :type text: str
+    :type conn: cloudbot.client.Client
+    """
+    if not re.match("^[a-z0-9_|.-\]\[]*$", text.lower()):
+        notice("Invalid username '{}'".format(text))
         return
-    notice("Attempting to change nick to \"{}\"...".format(inp))
-    conn.set_nick(inp)
+    notice("Attempting to change nick to '{}'...".format(text))
+    conn.set_nick(text)
 
 
+@asyncio.coroutine
 @hook.command(permissions=["botcontrol"])
-def raw(inp, conn=None, notice=None):
-    """raw <command> -- Sends a RAW IRC command."""
+def raw(text, conn, notice):
+    """<command> - sends <command> as a raw IRC command
+    :type text: str
+    :type conn: cloudbot.client.Client
+    """
     notice("Raw command sent.")
-    conn.send(inp)
+    conn.send(text)
 
 
+@asyncio.coroutine
 @hook.command(permissions=["botcontrol"])
-def say(inp, conn=None, chan=None):
-    """say [channel] <message> -- Makes the bot say <message> in [channel].
-    If [channel] is blank the bot will say the <message> in the channel
-    the command was used in."""
-    inp = inp.split(" ")
-    if inp[0][0] == "#":
-        message = u" ".join(inp[1:])
-        out = u"PRIVMSG {} :{}".format(inp[0], message)
+def say(text, conn, chan):
+    """[#channel] <message> - says <message> to [#channel], or to the caller's channel if no channel is specified
+    :type text: str
+    :type conn: cloudbot.client.Client
+    :type chan: str
+    """
+    text = text.strip()
+    if text.startswith("#"):
+        split = text.split(None, 1)
+        channel = split[0]
+        text = split[1]
     else:
-        message = u" ".join(inp[0:])
-        out = u"PRIVMSG {} :{}".format(chan, message)
-    conn.send(out)
+        channel = chan
+        text = text
+    conn.message(channel, text)
 
 
-@hook.command("act", permissions=["botcontrol"])
-@hook.command(permissions=["botcontrol"])
-def me(inp, conn=None, chan=None):
-    """me [channel] <action> -- Makes the bot act out <action> in [channel].
-    If [channel] is blank the bot will act the <action> in the channel the
-    command was used in."""
-    inp = inp.split(" ")
-    if inp[0][0] == "#":
-        message = ""
-        for x in inp[1:]:
-            message = message + x + " "
-        message = message[:-1]
-        out = u"PRIVMSG {} :\x01ACTION {}\x01".format(inp[0], message)
+@asyncio.coroutine
+@hook.command("message", "sayto", permissions=["botcontrol"])
+def message(text, conn):
+    """<name> <message> - says <message> to <name>
+    :type text: str
+    :type conn: cloudbot.client.Client
+    """
+    split = text.split(None, 1)
+    channel = split[0]
+    text = split[1]
+    conn.message(channel, text)
+
+
+@asyncio.coroutine
+@hook.command("me", "act", permissions=["botcontrol"])
+def me(text, conn, chan):
+    """[#channel] <action> - acts out <action> in a [#channel], or in the current channel of none is specified
+    :type text: str
+    :type conn: cloudbot.client.Client
+    :type chan: str
+    """
+    text = text.strip()
+    if text.startswith("#"):
+        split = text.split(None, 1)
+        channel = split[0]
+        text = split[1]
     else:
-        message = ""
-        for x in inp[0:]:
-            message = message + x + " "
-        message = message[:-1]
-        out = u"PRIVMSG {} :\x01ACTION {}\x01".format(chan, message)
-    conn.send(out)
+        channel = chan
+        text = text
+    conn.ctcp(channel, "ACTION", text)

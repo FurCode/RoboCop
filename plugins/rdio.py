@@ -1,29 +1,30 @@
 import urllib
+import urllib.parse
 import json
 import re
 
-import oauth2 as oauth
+oauth = None  # import oauth2 as oauth
 
-from util import hook
+from cloudbot import hook
 
 
 def getdata(inp, types, api_key, api_secret):
     consumer = oauth.Consumer(api_key, api_secret)
     client = oauth.Client(consumer)
     response = client.request('http://api.rdio.com/1/', 'POST',
-                              urllib.urlencode({'method': 'search', 'query': inp, 'types': types, 'count': '1'}))
+                              urllib.parse.urlencode({'method': 'search', 'query': inp, 'types': types, 'count': '1'}))
     data = json.loads(response[1])
     return data
 
 
-@hook.command
-def rdio(inp, bot=None):
-    """ rdio <search term> - alternatives: .rdiot (track), .rdioar (artist), .rdioal (album) """
+@hook.command()
+def rdio(text, bot):
+    """<query> - searches rdio for <query>"""
     api_key = bot.config.get("api_keys", {}).get("rdio_key")
     api_secret = bot.config.get("api_keys", {}).get("rdio_secret")
     if not api_key:
         return "error: no api key set"
-    data = getdata(inp, "Track,Album,Artist", api_key, api_secret)
+    data = getdata(text, "Track,Album,Artist", api_key, api_secret)
     try:
         info = data['result']['results'][0]
     except IndexError:
@@ -34,26 +35,26 @@ def rdio(inp, bot=None):
             artist = info['artist']
             album = info['album']
             url = info['shortUrl']
-            return u"\x02{}\x02 by \x02{}\x02 - {} {}".format(name, artist, album, url)
+            return "\x02{}\x02 by \x02{}\x02 - {} {}".format(name, artist, album, url)
         elif 'artist' in info and not 'album' in info:  # Album
             name = info['name']
             artist = info['artist']
             url = info['shortUrl']
-            return u"\x02{}\x02 by \x02{}\x02 - {}".format(name, artist, url)
+            return "\x02{}\x02 by \x02{}\x02 - {}".format(name, artist, url)
         else:  # Artist
             name = info['name']
             url = info['shortUrl']
-            return u"\x02{}\x02 - {}".format(name, url)
+            return "\x02{}\x02 - {}".format(name, url)
 
 
-@hook.command
-def rdiot(inp, bot=None):
-    """ rdiot <search term> - Search for tracks on rdio """
+@hook.command()
+def rdiot(text, bot):
+    """<query> - searches rdio for tracks matching <query>"""
     api_key = bot.config.get("api_keys", {}).get("rdio_key")
     api_secret = bot.config.get("api_keys", {}).get("rdio_secret")
     if not api_key:
         return "error: no api key set"
-    data = getdata(inp, "Track", api_key, api_secret)
+    data = getdata(text, "Track", api_key, api_secret)
     try:
         info = data['result']['results'][0]
     except IndexError:
@@ -62,34 +63,34 @@ def rdiot(inp, bot=None):
     artist = info['artist']
     album = info['album']
     url = info['shortUrl']
-    return u"\x02{}\x02 by \x02{}\x02 - {} - {}".format(name, artist, album, url)
+    return "\x02{}\x02 by \x02{}\x02 - {} - {}".format(name, artist, album, url)
 
 
-@hook.command
-def rdioar(inp, bot=None):
-    """ rdioar <search term> - Search for artists on rdio """
+@hook.command()
+def rdioar(text, bot):
+    """<query> - searches rdio for artists matching <query>"""
     api_key = bot.config.get("api_keys", {}).get("rdio_key")
     api_secret = bot.config.get("api_keys", {}).get("rdio_secret")
     if not api_key:
         return "error: no api key set"
-    data = getdata(inp, "Artist", api_key, api_secret)
+    data = getdata(text, "Artist", api_key, api_secret)
     try:
         info = data['result']['results'][0]
     except IndexError:
         return "No results."
     name = info['name']
     url = info['shortUrl']
-    return u"\x02{}\x02 - {}".format(name, url)
+    return "\x02{}\x02 - {}".format(name, url)
 
 
-@hook.command
-def rdioal(inp, bot=None):
-    """ rdioal <search term> - Search for albums on rdio """
+@hook.command()
+def rdioal(text, bot):
+    """<query> - searches rdio for albums matching <query>"""
     api_key = bot.config.get("api_keys", {}).get("rdio_key")
     api_secret = bot.config.get("api_keys", {}).get("rdio_secret")
     if not api_key:
         return "error: no api key set"
-    data = getdata(inp, "Album", api_key, api_secret)
+    data = getdata(text, "Album", api_key, api_secret)
     try:
         info = data['result']['results'][0]
     except IndexError:
@@ -97,14 +98,14 @@ def rdioal(inp, bot=None):
     name = info['name']
     artist = info['artist']
     url = info['shortUrl']
-    return u"\x02{}\x02 by \x02{}\x02 - {}".format(name, artist, url)
+    return "\x02{}\x02 by \x02{}\x02 - {}".format(name, artist, url)
 
 
-rdio_re = (r'(.*:)//(rd.io|www.rdio.com|rdio.com)(:[0-9]+)?(.*)', re.I)
+rdio_re = re.compile(r'(.*:)//(rd.io|www.rdio.com|rdio.com)(:[0-9]+)?(.*)', re.I)
 
 
-@hook.regex(*rdio_re)
-def rdio_url(match, bot=None):
+@hook.regex(rdio_re)
+def rdio_url(match, bot):
     api_key = bot.config.get("api_keys", {}).get("rdio_key")
     api_secret = bot.config.get("api_keys", {}).get("rdio_secret")
     if not api_key:
@@ -113,7 +114,7 @@ def rdio_url(match, bot=None):
     consumer = oauth.Consumer(api_key, api_secret)
     client = oauth.Client(consumer)
     response = client.request('http://api.rdio.com/1/', 'POST',
-                              urllib.urlencode({'method': 'getObjectFromUrl', 'url': url}))
+                              urllib.parse.urlencode({'method': 'getObjectFromUrl', 'url': url}))
     data = json.loads(response[1])
     info = data['result']
     if 'name' in info:
@@ -121,11 +122,11 @@ def rdio_url(match, bot=None):
             name = info['name']
             artist = info['artist']
             album = info['album']
-            return u"Rdio track: \x02{}\x02 by \x02{}\x02 - {}".format(name, artist, album)
+            return "Rdio track: \x02{}\x02 by \x02{}\x02 - {}".format(name, artist, album)
         elif 'artist' in info and not 'album' in info:  # Album
             name = info['name']
             artist = info['artist']
-            return u"Rdio album: \x02{}\x02 by \x02{}\x02".format(name, artist)
+            return "Rdio album: \x02{}\x02 by \x02{}\x02".format(name, artist)
         else:  # Artist
             name = info['name']
-            return u"Rdio artist: \x02{}\x02".format(name)
+            return "Rdio artist: \x02{}\x02".format(name)
