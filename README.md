@@ -6,7 +6,6 @@ RoboCop is an IRC bot, designed for Python 3, which is based on RoboCop Classic,
 
 ## Getting and using RoboCop
 =======
-
 ## Installing RoboCop
 
 To install RoboCop 2 on *Unix, see [docs/installing-unix.md](https://github.com/CloudBotIRC/CloudBotRefresh/blob/python3.4/docs/installing-unix.md)
