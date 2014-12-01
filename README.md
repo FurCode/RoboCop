@@ -1,31 +1,24 @@
-<<<<<<< HEAD
 # RoboCop
 
 ## About
 
-RoboCop is an IRC bot, designed for Python 2.7.x, which is based on Cloudbot (by Luke Rogers and the Cloudbot contributors), that is in turn based on Skybot.
+RoboCop is an IRC bot, designed for Python 3, which is based on RoboCop Classic, which in turn is based on Cloudbot (by Luke Rogers and the Cloudbot contributors), that is in turn based on Skybot. That's a big history.
 
 ## Getting and using RoboCop
 =======
-# CloudBot Refresh
 
-## About
+## Installing RoboCop
 
-CloudBotRefresh is the newest generation of CloudBot, the python IRC bot originally based on [Skybot](http://git.io/skybot).
+To install RoboCop 2 on *Unix, see [docs/installing-unix.md](https://github.com/CloudBotIRC/CloudBotRefresh/blob/python3.4/docs/installing-unix.md)
 
-## Installing CloudBot
+To install RoboCop 2 on Windows, see [docs/installing-windows.md](https://github.com/CloudBotIRC/CloudBotRefresh/blob/python3.4/docs/installing-windows.md)
 
-To install CloudBotRefresh on *Unix, see [docs/installing-unix.md](https://github.com/CloudBotIRC/CloudBotRefresh/blob/python3.4/docs/installing-unix.md)
+If you're going to be actively developing on RoboCop 2, and submitting PRs back, we recommend running it inside Vagrant. This allows everyone to have an identical development environment.
 
-To install CloudBotRefresh on Windows, see [docs/installing-windows.md](https://github.com/CloudBotIRC/CloudBotRefresh/blob/python3.4/docs/installing-windows.md)
-
-If you're going to be actively developing on CloudBotRefresh, and submitting PRs back, we recommend running CloudBotRefresh inside Vagrant. This allows everyone to have an identical development environment.
->>>>>>> ec0a73b4a4600de997bcd097636a4aac081bc307
-
-To install CloudBotRefresh in Vagrant (both *Unix and Windows), see [docs/installing-vagrant.md](https://github.com/CloudBotIRC/CloudBotRefresh/blob/python3.4/docs/installing-vagrant.md)
+To install RoboCop 2 in Vagrant (both *Unix and Windows), see [docs/installing-vagrant.md](https://github.com/CloudBotIRC/CloudBotRefresh/blob/python3.4/docs/installing-vagrant.md)
 
 
-### Running CloudBot
+### Running RoboCop 2
 
 Before you run the bot, rename `config.default` to `config.json` and edit it with your preferred settings. You can check if your JSON is valid using [jsonlint.com](http://jsonlint.com/)!
 
@@ -41,7 +34,7 @@ python3.4 CloudBotRefresh/cloudbot/__main__.py
 ```
 Specify the path as /path/to/repository/cloudbot/__main__.py, where `cloudbot` is inside the repository directory.
 
-## Getting help with CloudBot
+## Getting help with RoboCop
 
 ### Documentation
 
@@ -58,12 +51,11 @@ rewritten for refresh, but the other pages are outdated.
 
 The developers reside in [#techsupport](irc://irc.snoonet.org/techsupport) and would be glad to help you.
 
-<<<<<<< HEAD
 If you think you have found a bug/have a idea/suggestion, please **open a issue** here on Github.
 
 ### Requirements
 
-CloudBot runs on **Python** *2.7.x*. It is currently developed on **Mac OS X** *10.10* with **Python** *2.7.8*.
+CloudBot runs on **Python** *3.4.x*. It is currently developed on **Mac OS X** *10.10* with **Python** *2.3.4*.
 
 It **requires the Python module** lXML.
 The module `Enchant` is needed for the spellcheck plugin.
@@ -72,7 +64,6 @@ The module `PyDNS` is needed for SRV record lookup in the mcping plugin.
 **Windows** users: Windows compatibility some plugins is **broken** (such as ping), but we do intend to add it. Eventually.
 =======
 If you think you have found a bug/have a idea/suggestion, please **open a issue** here on Github and contact us on IRC!
->>>>>>> ec0a73b4a4600de997bcd097636a4aac081bc307
 
 ## License
 
